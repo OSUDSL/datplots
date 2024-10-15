@@ -1,0 +1,22 @@
+
+[project]
+name = "DatPlot"
+version = "2024.0.0"
+readme = "README.md"
+dependencies = [
+    "polars",
+    "numpy",
+    "pendulum",
+    "loguru",
+    "icecream",
+    "nicegui",
+    "pywebview",
+    "scipy",
+    "plotly",
+    "pywebview",
+    "pendulum"
+]
+
+[tool.rye]
+managed = true
+dev-dependencies = ["ptpython"]
