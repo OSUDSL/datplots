@@ -16,6 +16,8 @@ class MainDataPage:
         self.x_axis_dropdown = None #dropdown for x axis
         self.dat_file_data = None  # store dat file data
         self.plot_container = None  # container for the plot
+        self.min_max_range = None #store min and max x values
+        self.control_panel = None #control panel to change x axis
 
     def page_creation(self):
         # Create the main UI elements
@@ -53,6 +55,15 @@ class MainDataPage:
         # Create a container for the plot
         self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
 
+        #Control Panel?
+        self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
+
+        # Bind  change event to the plot_selected_column function
+        self.min_max_range.on('change', self.plot_selected_column)
+
+        self.control_panel = ui.label().bind_text_from(self.min_max_range, 'value',
+                          backward=lambda v: f'min: {v["min"]}, max: {v["max"]}')
+
     def handle_dat_file(self, e: UploadEventArguments):
         """Handle the .dat file upload."""
         if not e.name.endswith('.dat'):
@@ -61,7 +72,7 @@ class MainDataPage:
 
         dat_file_path = os.path.join("/tmp", e.name)  # Save the file to /tmp
         try:
-            # Read from the temp file and write to a new file
+            # Read from temp file and write to a new file
             with open(dat_file_path, 'wb') as f:
                 f.write(e.content.read())  # Read the content and write as bytes
             logger.info(f"Uploaded .dat file: {dat_file_path}")
@@ -73,9 +84,21 @@ class MainDataPage:
 
             # Update the dropdown options
             self.graph_dropdown.options = columns
-            self.second_graph_dropdown.options = columns  # Update second dropdown as well
+            self.second_graph_dropdown.options = columns  # Update second dropdown
             self.graph_dropdown.update()  # Refresh and display the new options
             self.second_graph_dropdown.update()
+
+            # Set the initial min and max range based on the x-axis data
+            x_column = self.x_axis_dropdown.value
+            x_data = self.dat_file_data[x_column].to_numpy()
+            x_beginning = x_data.min()
+            x_end = x_data.max()
+
+            # Set the min/max range of the control panel based on the x data
+            self.min_max_range.min = x_beginning
+            self.min_max_range.max = x_end
+            self.min_max_range.value = {'min': x_beginning, 'max': x_end}
+            self.min_max_range.update()
 
         except Exception as ex:
             logger.error(f"Error reading .dat file: {ex}")
@@ -89,8 +112,13 @@ class MainDataPage:
         x_column = self.x_axis_dropdown.value  # x axis
 
         if self.dat_file_data is not None and y_column_1 in self.dat_file_data.columns:
-            # Get data for the first y-axis
+
             x_data = self.dat_file_data[x_column].to_numpy()
+
+            # Get selected min and max values from the control panel for zooming
+            zoom_min = self.min_max_range.value['min']
+            zoom_max = self.min_max_range.value['max']
+
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
 
             # Create the first trace for the left y-axis
@@ -115,6 +143,10 @@ class MainDataPage:
                     side="right",
                     overlaying="y",  # Overlay on the same x-axis
                     position=1  # Position the second Y-axis on the right
+                ),
+                xaxis=dict(
+                    title=x_column,
+                    range=[zoom_min, zoom_max],  # Use zoom range based on the control panel
                 )
             )
 
