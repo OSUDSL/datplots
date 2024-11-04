@@ -18,6 +18,8 @@ class MainDataPage:
         self.plot_container = None  # container for the plot
         self.min_max_range = None #store min and max x values
         self.control_panel = None #control panel to change x axis
+        self.reset = None #reset button for control panel
+        self.original_min_max = None  # Store the original full range for resetting
 
     def page_creation(self):
         # Create the main UI elements
@@ -55,14 +57,18 @@ class MainDataPage:
         # Create a container for the plot
         self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
 
-        #Control Panel?
+        # Control Panel
         self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
 
-        # Bind  change event to the plot_selected_column function
+        # Bind the change event to the plot_selected_column function
         self.min_max_range.on('change', self.plot_selected_column)
 
+        # Label to show min and max range
         self.control_panel = ui.label().bind_text_from(self.min_max_range, 'value',
                           backward=lambda v: f'min: {v["min"]}, max: {v["max"]}')
+
+        # Reset button to restore original zoom level
+        ui.button("Reset Zoom", on_click=self.reset_graph)
 
     def handle_dat_file(self, e: UploadEventArguments):
         """Handle the .dat file upload."""
@@ -93,6 +99,9 @@ class MainDataPage:
             x_data = self.dat_file_data[x_column].to_numpy()
             x_beginning = x_data.min()
             x_end = x_data.max()
+
+            # Store the original range for resetting purposes
+            self.original_min_max = {'min': x_beginning, 'max': x_end}
 
             # Set the min/max range of the control panel based on the x data
             self.min_max_range.min = x_beginning
@@ -129,11 +138,11 @@ class MainDataPage:
                 y_data_2 = self.dat_file_data[y_column_2].to_numpy()
                 fig.add_trace(go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis='y2'))
 
-            # Update layout to add a second Y-axis on the right side
+            # Update layout to add second Y-axis on the right side
             fig.update_layout(
                 title=f"Plot of {y_column_1} and {y_column_2} vs {x_column}",
-                autosize=True,  # Allow plot to auto-resize
-                height=None,  # Let height be determined by the container
+                autosize=True,  # plot auto-resize
+                height=None,  # height determined by the container
                 yaxis=dict(
                     title=y_column_1,
                     side="left"
@@ -157,6 +166,16 @@ class MainDataPage:
             with self.plot_container:
                 ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
 
+
+    def reset_graph(self):
+        """Reset the graph to the original zoom range (full range)."""
+        if self.original_min_max:
+            # Reset the control panel range to the original min and max
+            self.min_max_range.value = self.original_min_max
+            self.min_max_range.update()
+
+            # Re-plot the graph with the original range
+            self.plot_selected_column()
 
 def init_gui():
     page = MainDataPage()
