@@ -52,8 +52,8 @@ class MainDataPage:
                 on_change=self.plot_selected_column,  # column selection
             )
 
-            ui.upload(
-                on_upload=self.handle_dat_file,
+            ui.button(
+                "Load DAT file", on_click=self.pick_dat_file, icon="folder"
             )
 
         # Create a container for the plot
@@ -76,21 +76,17 @@ class MainDataPage:
         self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change', self.plot_selected_column)
         self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change', self.plot_selected_column)
 
-    def handle_dat_file(self, e: UploadEventArguments):
-        """Handle the .dat file upload."""
-        if not e.name.endswith('.dat'):
-            ui.notify("Please upload a valid .dat file")
-            return
 
-        dat_file_path = os.path.join("/tmp", e.name)  # Save the file to /tmp
+    async def pick_dat_file(self):
+        result = await app.native.main_window.create_file_dialog()
+        if len(result) > 0:
+            self.dat_filename = result[0]
+            logger.info(f"DAT file {self.dat_filename} selected")
+
         try:
-            # Read from temp file and write to a new file
-            with open(dat_file_path, 'wb') as f:
-                f.write(e.content.read())  # Read the content and write as bytes
-            logger.info(f"Uploaded .dat file: {dat_file_path}")
 
             # Load the dat file using polars
-            self.dat_file_data = pl.read_csv(dat_file_path, separator=" ", has_header=True)  # First line headers
+            self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)  # First line headers
             columns = [col for col in self.dat_file_data.columns if col]  # Filter out any empty column names
             logger.info(columns)
 
@@ -180,7 +176,6 @@ class MainDataPage:
                     fig.add_hline(y=y_position, line_dash="dash", line_color="red")
                 except ValueError:
                     logger.error("Invalid horizontal line position")
-
 
             # Clear the container before adding the new plot
             self.plot_container.clear()  # Remove previous plot
