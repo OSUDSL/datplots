@@ -20,6 +20,8 @@ class MainDataPage:
         self.control_panel = None #control panel to change x axis
         self.reset = None #reset button for control panel
         self.original_min_max = None  # Store the original full range for resetting
+        self.vertical_line_input = None  # Input for vertical line position
+        self.horizontal_line_input = None  # Input for horizontal line position
 
     def page_creation(self):
         # Create the main UI elements
@@ -69,6 +71,10 @@ class MainDataPage:
 
         # Reset button to restore original zoom level
         ui.button("Reset Zoom", on_click=self.reset_graph)
+
+        # Input fields for vertical and horizontal line positions
+        self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change', self.plot_selected_column)
+        self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change', self.plot_selected_column)
 
     def handle_dat_file(self, e: UploadEventArguments):
         """Handle the .dat file upload."""
@@ -158,6 +164,23 @@ class MainDataPage:
                     range=[zoom_min, zoom_max],  # Use zoom range based on the control panel
                 )
             )
+
+            # Add vertical line if x position is provided
+            if self.vertical_line_input.value:
+                try:
+                    x_position = float(self.vertical_line_input.value)
+                    fig.add_vline(x=x_position, line_dash="dash", line_color="blue")
+                except ValueError:
+                    logger.error("Invalid vertical line position")
+
+            # Add horizontal line if y position is provided
+            if self.horizontal_line_input.value:
+                try:
+                    y_position = float(self.horizontal_line_input.value)
+                    fig.add_hline(y=y_position, line_dash="dash", line_color="red")
+                except ValueError:
+                    logger.error("Invalid horizontal line position")
+
 
             # Clear the container before adding the new plot
             self.plot_container.clear()  # Remove previous plot
