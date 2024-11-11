@@ -76,6 +76,17 @@ class MainDataPage:
         self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change', self.plot_selected_column)
         self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change', self.plot_selected_column)
 
+        # Reset lines button
+        ui.button("Reset Lines", on_click=self.reset_lines)
+
+    def reset_lines(self):
+        """Reset the vertical and horizontal lines by clearing the input fields."""
+        self.vertical_line_input.value = ""  # Clear the vertical line input
+        self.horizontal_line_input.value = ""  # Clear the horizontal line input
+        self.vertical_line_input.update()
+        self.horizontal_line_input.update()
+        self.plot_selected_column()  # plot graph without the lines
+
 
     async def pick_dat_file(self):
         result = await app.native.main_window.create_file_dialog()
