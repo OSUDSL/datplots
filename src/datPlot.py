@@ -19,9 +19,10 @@ class MainDataPage:
         self.min_max_range = None #store min and max x values
         self.control_panel = None #control panel to change x axis
         self.reset = None #reset button for control panel
-        self.original_min_max = None  # Store the original full range for resetting
-        self.vertical_line_input = None  # Input for vertical line position
-        self.horizontal_line_input = None  # Input for horizontal line position
+        self.original_min_max = None  # store the original full range for resetting
+        self.vertical_line_input = None  # input for vertical line position
+        self.horizontal_line_input = None  # input for horizontal line position
+        self.histogram_container = None  # container for the histogram
 
     def page_creation(self):
         # Create the main UI elements
@@ -56,8 +57,9 @@ class MainDataPage:
                 "Load DAT file", on_click=self.pick_dat_file, icon="folder"
             )
 
-        # Create a container for the plot
+        # containers for the plots
         self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
+        self.histogram_container = ui.element('div').style('width: 100%; height: 100vh;')
 
         # Control Panel
         self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
@@ -142,6 +144,7 @@ class MainDataPage:
             zoom_max = self.min_max_range.value['max']
 
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
+            y_data_2 = None
 
             # Create the first trace for the left y-axis
             fig = go.Figure(data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis='y1'))
@@ -153,6 +156,7 @@ class MainDataPage:
 
             # Update layout to add second Y-axis on the right side
             fig.update_layout(
+                template='plotly_dark',
                 title=f"Plot of {y_column_1} and {y_column_2} vs {x_column}",
                 autosize=True,  # plot auto-resize
                 height=None,  # height determined by the container
@@ -176,7 +180,7 @@ class MainDataPage:
             if self.vertical_line_input.value:
                 try:
                     x_position = float(self.vertical_line_input.value)
-                    fig.add_vline(x=x_position, line_dash="dash", line_color="blue")
+                    fig.add_vline(x=x_position, line_dash="dash", line_color="green")
                 except ValueError:
                     logger.error("Invalid vertical line position")
 
@@ -184,7 +188,7 @@ class MainDataPage:
             if self.horizontal_line_input.value:
                 try:
                     y_position = float(self.horizontal_line_input.value)
-                    fig.add_hline(y=y_position, line_dash="dash", line_color="red")
+                    fig.add_hline(y=y_position, line_dash="dash", line_color="yellow")
                 except ValueError:
                     logger.error("Invalid horizontal line position")
 
@@ -195,6 +199,38 @@ class MainDataPage:
             with self.plot_container:
                 ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
 
+            #histogram plot
+            self.plot_histogram(y_data_1, y_data_2)
+
+    def plot_histogram(self, y_data_1, y_data_2):
+        """Plot a histogram based on the two selected Y-axis columns, excluding zeros."""
+        fig = go.Figure()
+
+        # Filter out zeros from y_data_1
+        y_data_1_filtered = y_data_1[y_data_1 >= 1]
+
+        # Add histogram for the first Y-axis column
+        fig.add_trace(go.Histogram(x=y_data_1_filtered, name="Histogram of Y1", opacity=0.7))
+
+        # Add histogram for the second Y-axis column + filter out zeros
+        if y_data_2 is not None:
+            y_data_2_filtered = y_data_2[y_data_2 >= 1]
+            fig.add_trace(go.Histogram(x=y_data_2_filtered, name="Histogram of Y2", opacity=0.7))
+
+        # Update layout for the histogram
+        fig.update_layout(
+            template='plotly_dark',
+            title="Histogram of Y-Axis Columns (Excluding 0)",
+            xaxis_title="Y Values",
+            yaxis_title="Frequency",
+            barmode="overlay",  # Overlay histograms
+            autosize=True,
+        )
+
+        # Clear and updat histogram container
+        self.histogram_container.clear()
+        with self.histogram_container:
+            ui.plotly(fig).style('width: 100%; height: 100%;')
 
     def reset_graph(self):
         """Reset the graph to the original zoom range (full range)."""
@@ -209,6 +245,10 @@ class MainDataPage:
 def init_gui():
     page = MainDataPage()
     page.page_creation()
+
+    #dark mode
+    dark = ui.dark_mode()
+    dark.enable()
 
     # Start the NiceGUI app
     ui.run(native=True)
