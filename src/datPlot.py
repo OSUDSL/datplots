@@ -23,6 +23,8 @@ class MainDataPage:
         self.vertical_line_input = None  # input for vertical line position
         self.horizontal_line_input = None  # input for horizontal line position
         self.histogram_container = None  # container for the histogram
+        self.menu = None # menu for first plot
+        self.filter_zeros = None # filter out 0 val for histogram
 
     def page_creation(self):
         # Create the main UI elements
@@ -57,29 +59,50 @@ class MainDataPage:
                 "Load DAT file", on_click=self.pick_dat_file, icon="folder"
             )
 
-        # containers for the plots
+        # containers for plot1
         self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
+        #self.histogram_container = ui.element('div').style('width: 100%; height: 100vh;')
+
+        # Add control panel in an expansion panel
+        with ui.expansion("Control Panel", icon="settings", value=False):
+            with ui.column().style("padding: 10px;"):
+                # Range slider for zooming
+                self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
+                self.min_max_range.on('change', self.plot_selected_column)
+
+                # Display selected min and max range
+                self.control_panel = ui.label().bind_text_from(
+                    self.min_max_range, 'value',
+                    backward=lambda v: f'min: {v["min"]}, max: {v["max"]}'
+                )
+
+                # Reset button to restore original zoom
+                ui.button("Reset Zoom", on_click=self.reset_graph)
+
+                # Input for vertical line position
+                self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change',
+                                                                                     self.plot_selected_column)
+
+                # Input for horizontal line position
+                self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change',
+                                                                                         self.plot_selected_column)
+
+                # Button to reset lines
+                ui.button("Reset Lines", on_click=self.reset_lines)
+
+        # container for histogram plot
         self.histogram_container = ui.element('div').style('width: 100%; height: 100vh;')
 
-        # Control Panel
-        self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
+        # Add a toggle button for filtering zeros (histogram)
+        self.filter_zeros = False
 
-        # Bind the change event to the plot_selected_column function
-        self.min_max_range.on('change', self.plot_selected_column)
+        def toggle_filter():
+            self.filter_zeros = not self.filter_zeros
+            self.plot_histogram()  # Re-plot the histogram with the new filter state
+            ui.notify(f"Filtering Zeros: {'ON' if self.filter_zeros else 'OFF'}")
 
-        # Label to show min and max range
-        self.control_panel = ui.label().bind_text_from(self.min_max_range, 'value',
-                          backward=lambda v: f'min: {v["min"]}, max: {v["max"]}')
+        ui.button("Toggle Zero Filter", on_click=toggle_filter)
 
-        # Reset button to restore original zoom level
-        ui.button("Reset Zoom", on_click=self.reset_graph)
-
-        # Input fields for vertical and horizontal line positions
-        self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change', self.plot_selected_column)
-        self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change', self.plot_selected_column)
-
-        # Reset lines button
-        ui.button("Reset Lines", on_click=self.reset_lines)
 
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
@@ -127,6 +150,7 @@ class MainDataPage:
         except Exception as ex:
             logger.error(f"Error reading .dat file: {ex}")
             ui.notify("Error reading .dat file")
+
 
     def plot_selected_column(self):
         """Plot the selected columns from the .dat file."""
@@ -202,35 +226,49 @@ class MainDataPage:
             #histogram plot
             self.plot_histogram(y_data_1, y_data_2)
 
-    def plot_histogram(self, y_data_1, y_data_2):
-        """Plot a histogram based on the two selected Y-axis columns, excluding zeros."""
+
+    def plot_histogram(self, y_data_1=None, y_data_2=None):
+        """Plot a histogram based on the two selected Y-axis columns."""
         fig = go.Figure()
 
-        # Filter out zeros from y_data_1
-        y_data_1_filtered = y_data_1[y_data_1 >= 1]
+        if y_data_1 is None or y_data_2 is None:
+            y_column_1 = self.graph_dropdown.value
+            y_column_2 = self.second_graph_dropdown.value
+
+            if y_column_1 in self.dat_file_data.columns:
+                y_data_1 = self.dat_file_data[y_column_1].to_numpy()
+            if y_column_2 in self.dat_file_data.columns:
+                y_data_2 = self.dat_file_data[y_column_2].to_numpy()
+
+        # Filter out zeros if the filter is active
+        if self.filter_zeros:
+            y_data_1 = y_data_1[y_data_1 != 0]
+            if y_data_2 is not None:
+                y_data_2 = y_data_2[y_data_2 != 0]
 
         # Add histogram for the first Y-axis column
-        fig.add_trace(go.Histogram(x=y_data_1_filtered, name="Histogram of Y1", opacity=0.7))
+        if y_data_1 is not None:
+            fig.add_trace(go.Histogram(x=y_data_1, name="Histogram of Y1", opacity=0.7))
 
-        # Add histogram for the second Y-axis column + filter out zeros
+        # Add histogram for the second Y-axis column
         if y_data_2 is not None:
-            y_data_2_filtered = y_data_2[y_data_2 >= 1]
-            fig.add_trace(go.Histogram(x=y_data_2_filtered, name="Histogram of Y2", opacity=0.7))
+            fig.add_trace(go.Histogram(x=y_data_2, name="Histogram of Y2", opacity=0.7))
 
         # Update layout for the histogram
         fig.update_layout(
             template='plotly_dark',
-            title="Histogram of Y-Axis Columns (Excluding 0)",
+            title="Histogram of Y-Axis Columns",
             xaxis_title="Y Values",
             yaxis_title="Frequency",
             barmode="overlay",  # Overlay histograms
             autosize=True,
         )
 
-        # Clear and updat histogram container
+        # Clear and update the histogram container
         self.histogram_container.clear()
         with self.histogram_container:
             ui.plotly(fig).style('width: 100%; height: 100%;')
+
 
     def reset_graph(self):
         """Reset the graph to the original zoom range (full range)."""
@@ -241,6 +279,7 @@ class MainDataPage:
 
             # Re-plot the graph with the original range
             self.plot_selected_column()
+
 
 def init_gui():
     page = MainDataPage()
