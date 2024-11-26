@@ -26,6 +26,8 @@ class MainDataPage:
         self.menu = None # menu for first plot
         self.filter_zeros = None # filter out 0 val for histogram
 
+
+
     def page_creation(self):
         # Create the main UI elements
         with ui.row(align_items="center").style("width:100%"):
@@ -59,12 +61,17 @@ class MainDataPage:
                 "Load DAT file", on_click=self.pick_dat_file, icon="folder"
             )
 
+        # Display current filename heading
+        self.current_filename_label = ui.label("No file loaded").classes("text-lg font-semibold mt-2")
+
         # containers for plot1
         self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
-        #self.histogram_container = ui.element('div').style('width: 100%; height: 100vh;')
+
 
         # Add control panel in an expansion panel
-        with ui.expansion("Control Panel", icon="settings", value=False):
+        with ui.expansion("Control Panel", icon="settings", value=False).style(
+                "background-color: #0e7af3; color: white; border-radius: 5px; padding: 5px;"
+        ):
             with ui.column().style("padding: 10px;"):
                 # Range slider for zooming
                 self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
@@ -90,6 +97,10 @@ class MainDataPage:
                 # Button to reset lines
                 ui.button("Reset Lines", on_click=self.reset_lines)
 
+
+        # Add a separator between the control panel and histogram plot
+        ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
+
         # container for histogram plot
         self.histogram_container = ui.element('div').style('width: 100%; height: 100vh;')
 
@@ -104,6 +115,7 @@ class MainDataPage:
         ui.button("Toggle Zero Filter", on_click=toggle_filter)
 
 
+
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
         self.vertical_line_input.value = ""  # Clear the vertical line input
@@ -112,44 +124,54 @@ class MainDataPage:
         self.horizontal_line_input.update()
         self.plot_selected_column()  # plot graph without the lines
 
-
     async def pick_dat_file(self):
-        result = await app.native.main_window.create_file_dialog()
-        if len(result) > 0:
-            self.dat_filename = result[0]
-            logger.info(f"DAT file {self.dat_filename} selected")
-
+        # Show a loading progress bar
+        loading_bar = ui.linear_progress(value=0).style("margin-top: 10px;").bind_value_to(
+            lambda: 1  # Sets progress to full when loaded
+        )
         try:
+            result = await app.native.main_window.create_file_dialog()
+            if len(result) > 0:
+                self.dat_filename = result[0]
+                logger.info(f"DAT file {self.dat_filename} selected")
 
-            # Load the dat file using polars
-            self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)  # First line headers
-            columns = [col for col in self.dat_file_data.columns if col]  # Filter out any empty column names
-            logger.info(columns)
+                # Update the filename label
+                self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
+                self.current_filename_label.update()
 
-            # Update the dropdown options
-            self.graph_dropdown.options = columns
-            self.second_graph_dropdown.options = columns  # Update second dropdown
-            self.graph_dropdown.update()  # Refresh and display the new options
-            self.second_graph_dropdown.update()
+                # Load the dat file using polars
+                self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ",
+                                                 has_header=True)  # First line headers
+                columns = [col for col in self.dat_file_data.columns if col]  # Filter out any empty column names
+                logger.info(columns)
 
-            # Set the initial min and max range based on the x-axis data
-            x_column = self.x_axis_dropdown.value
-            x_data = self.dat_file_data[x_column].to_numpy()
-            x_beginning = x_data.min()
-            x_end = x_data.max()
+                # Update the dropdown options
+                self.graph_dropdown.options = columns
+                self.second_graph_dropdown.options = columns  # Update second dropdown
+                self.graph_dropdown.update()  # Refresh and display the new options
+                self.second_graph_dropdown.update()
 
-            # Store the original range for resetting purposes
-            self.original_min_max = {'min': x_beginning, 'max': x_end}
+                # Set the initial min and max range based on the x-axis data
+                x_column = self.x_axis_dropdown.value
+                x_data = self.dat_file_data[x_column].to_numpy()
+                x_beginning = x_data.min()
+                x_end = x_data.max()
 
-            # Set the min/max range of the control panel based on the x data
-            self.min_max_range.min = x_beginning
-            self.min_max_range.max = x_end
-            self.min_max_range.value = {'min': x_beginning, 'max': x_end}
-            self.min_max_range.update()
+                # Store the original range for resetting purposes
+                self.original_min_max = {'min': x_beginning, 'max': x_end}
 
+                # Set the min/max range of the control panel based on the x data
+                self.min_max_range.min = x_beginning
+                self.min_max_range.max = x_end
+                self.min_max_range.value = {'min': x_beginning, 'max': x_end}
+                self.min_max_range.update()
         except Exception as ex:
             logger.error(f"Error reading .dat file: {ex}")
             ui.notify("Error reading .dat file")
+        finally:
+            # Remove the loading bar after the file is loaded / error occurs
+            loading_bar.delete()
+
 
 
     def plot_selected_column(self):
@@ -227,14 +249,15 @@ class MainDataPage:
             self.plot_histogram(y_data_1, y_data_2)
 
 
+
     def plot_histogram(self, y_data_1=None, y_data_2=None):
         """Plot a histogram based on the two selected Y-axis columns."""
         fig = go.Figure()
 
-        if y_data_1 is None or y_data_2 is None:
-            y_column_1 = self.graph_dropdown.value
-            y_column_2 = self.second_graph_dropdown.value
+        y_column_1 = self.graph_dropdown.value
+        y_column_2 = self.second_graph_dropdown.value
 
+        if y_data_1 is None or y_data_2 is None:
             if y_column_1 in self.dat_file_data.columns:
                 y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             if y_column_2 in self.dat_file_data.columns:
@@ -248,16 +271,20 @@ class MainDataPage:
 
         # Add histogram for the first Y-axis column
         if y_data_1 is not None:
-            fig.add_trace(go.Histogram(x=y_data_1, name="Histogram of Y1", opacity=0.7))
+            fig.add_trace(go.Histogram(x=y_data_1, name=f"Histogram of {y_column_1}", opacity=0.7))
 
         # Add histogram for the second Y-axis column
         if y_data_2 is not None:
-            fig.add_trace(go.Histogram(x=y_data_2, name="Histogram of Y2", opacity=0.7))
+            fig.add_trace(go.Histogram(x=y_data_2, name=f"Histogram of {y_column_2}", opacity=0.7))
 
         # Update layout for the histogram
+        title_text = f"Histogram of {y_column_1}"
+        if y_column_2 != "Select Graph":
+            title_text += f" and {y_column_2}"
+
         fig.update_layout(
             template='plotly_dark',
-            title="Histogram of Y-Axis Columns",
+            title=title_text,
             xaxis_title="Y Values",
             yaxis_title="Frequency",
             barmode="overlay",  # Overlay histograms
@@ -270,6 +297,7 @@ class MainDataPage:
             ui.plotly(fig).style('width: 100%; height: 100%;')
 
 
+
     def reset_graph(self):
         """Reset the graph to the original zoom range (full range)."""
         if self.original_min_max:
@@ -279,6 +307,7 @@ class MainDataPage:
 
             # Re-plot the graph with the original range
             self.plot_selected_column()
+
 
 
 def init_gui():
