@@ -67,7 +67,6 @@ class MainDataPage:
         # containers for plot1
         self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
 
-
         # Add control panel in an expansion panel
         with ui.expansion("Control Panel", icon="settings", value=False).style(
                 "background-color: #0e7af3; color: white; border-radius: 5px; padding: 5px;"
@@ -86,17 +85,17 @@ class MainDataPage:
                 # Reset button to restore original zoom
                 ui.button("Reset Zoom", on_click=self.reset_graph)
 
-                # Input for vertical line position
-                self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change',
-                                                                                     self.plot_selected_column)
-
-                # Input for horizontal line position
-                self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change',
+                # Horizontal layout for the remaining inputs and buttons
+                with ui.row().style("margin-top: 10px;"):
+                    # Input for vertical line position
+                    self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change',
                                                                                          self.plot_selected_column)
+                    # Input for horizontal line position
+                    self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change',
+                                                                                             self.plot_selected_column)
 
-                # Button to reset lines
-                ui.button("Reset Lines", on_click=self.reset_lines)
-
+                    # Button to reset lines
+                    ui.button("Reset Lines", on_click=self.reset_lines)
 
         # Add a separator between the control panel and histogram plot
         ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
