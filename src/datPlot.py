@@ -113,6 +113,10 @@ class MainDataPage:
 
         ui.button("Toggle Zero Filter", on_click=toggle_filter)
 
+        # Stats
+        ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
+        self.stats_container = ui.column()
+
 
 
     def reset_lines(self):
@@ -247,6 +251,9 @@ class MainDataPage:
             #histogram plot
             self.plot_histogram(y_data_1, y_data_2)
 
+            # Update the summary statistics after plotting
+            self.update_summary_stats(y_data_1, y_data_2)
+
 
 
     def plot_histogram(self, y_data_1=None, y_data_2=None):
@@ -306,6 +313,43 @@ class MainDataPage:
 
             # Re-plot the graph with the original range
             self.plot_selected_column()
+
+    def update_summary_stats(self, y_data_1, y_data_2):
+        """Update the summary statistics for the selected columns."""
+        
+        self.stats_container.clear()  # Clear any existing stats
+
+        y_column_1 = self.graph_dropdown.value
+        y_column_2 = self.second_graph_dropdown.value
+
+        # Compute and display stats for the first Y-axis column
+        if y_data_1 is not None:
+            stats_1 = self.compute_stats(y_data_1)
+            with self.stats_container:
+                ui.label(f"Summary Stats for {y_column_1}:").classes("text-lg font-semibold")
+                ui.label(f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
+                         f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}")
+
+        # Compute and display stats for the second Y-axis column, if selected
+        if y_data_2 is not None:
+            stats_2 = self.compute_stats(y_data_2)
+            with self.stats_container:
+                ui.label(f"Summary Stats for {y_column_2}:").classes("text-lg font-semibold")
+                ui.label(f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
+                         f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}")
+
+
+
+    @staticmethod
+    def compute_stats(data):
+        """Compute basic statistics for a given data array."""
+        return {
+            'mean': np.mean(data),
+            'median': np.median(data),
+            'std': np.std(data),
+            'min': np.min(data),
+            'max': np.max(data)
+        }
 
 
 
