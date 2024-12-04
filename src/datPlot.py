@@ -127,6 +127,9 @@ class MainDataPage:
         self.horizontal_line_input.update()
         self.plot_selected_column()  # plot graph without the lines
 
+
+
+
     async def pick_dat_file(self):
         # Show a loading progress bar
         loading_bar = ui.linear_progress(value=0).style("margin-top: 10px;").bind_value_to(
@@ -146,7 +149,7 @@ class MainDataPage:
                 self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ",
                                                  has_header=True)  # First line headers
                 columns = [col for col in self.dat_file_data.columns if col]  # Filter out any empty column names
-                logger.info(columns)
+                logger.info(f"Columns loaded: {columns}")
 
                 # Update the dropdown options
                 self.graph_dropdown.options = columns
@@ -160,7 +163,15 @@ class MainDataPage:
                 x_beginning = x_data.min()
                 x_end = x_data.max()
 
-                # Store the original range for resetting purposes
+                # Check if SimTime/DatTime column is all zeros or the same number for all values
+                if np.all(x_data == 0):
+                    logger.warning(f"The {x_column} column contains only zeros.")
+                elif len(np.unique(x_data)) == 1:
+                    logger.warning(f"The {x_column} column contains only one unique value: {x_data[0]}")
+                else:
+                    logger.info(f"The {x_column} column has a valid range of values.")
+
+                # Store the original range for resetting
                 self.original_min_max = {'min': x_beginning, 'max': x_end}
 
                 # Set the min/max range of the control panel based on the x data
