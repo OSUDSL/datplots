@@ -129,59 +129,79 @@ class MainDataPage:
 
 
 
-
     async def pick_dat_file(self):
         # Show a loading progress bar
         loading_bar = ui.linear_progress(value=0).style("margin-top: 10px;").bind_value_to(
             lambda: 1  # Sets progress to full when loaded
         )
         try:
+            # Show the file dialog
             result = await app.native.main_window.create_file_dialog()
-            if len(result) > 0:
-                self.dat_filename = result[0]
-                logger.info(f"DAT file {self.dat_filename} selected")
 
-                # Update the filename label
-                self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
-                self.current_filename_label.update()
+            if not result:
+                # User canceled the dialog
+                ui.notify("No file selected")
+                return  # Exit the function
 
-                # Load the dat file using polars
-                self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ",
-                                                 has_header=True)  # First line headers
-                columns = [col for col in self.dat_file_data.columns if col]  # Filter out any empty column names
-                logger.info(f"Columns loaded: {columns}")
+            # If a file was selected
+            self.dat_filename = result[0]
+            logger.info(f"DAT file {self.dat_filename} selected")
 
-                # Update the dropdown options
-                self.graph_dropdown.options = columns
-                self.second_graph_dropdown.options = columns  # Update second dropdown
-                self.graph_dropdown.update()  # Refresh and display the new options
-                self.second_graph_dropdown.update()
+            # Clear previous plots and histograms
+            self.plot_container.clear()
+            self.histogram_container.clear()
 
-                # Set the initial min and max range based on the x-axis data
-                x_column = self.x_axis_dropdown.value
-                x_data = self.dat_file_data[x_column].to_numpy()
-                x_beginning = x_data.min()
-                x_end = x_data.max()
+            # Reset dropdowns
+            self.graph_dropdown.value = "Select Graph"
+            self.second_graph_dropdown.value = "Select Graph"
+            self.graph_dropdown.options = []
+            self.second_graph_dropdown.options = []
+            self.graph_dropdown.update()
+            self.second_graph_dropdown.update()
 
-                # Check if SimTime/DatTime column is all zeros or the same number for all values
-                if np.all(x_data == 0):
-                    logger.warning(f"The {x_column} column contains only zeros.")
-                elif len(np.unique(x_data)) == 1:
-                    logger.warning(f"The {x_column} column contains only one unique value: {x_data[0]}")
-                else:
-                    logger.info(f"The {x_column} column has a valid range of values.")
+            # Reset control panel
+            self.min_max_range.value = {'min': 0, 'max': 100}
+            self.min_max_range.update()
 
-                # Store the original range for resetting
-                self.original_min_max = {'min': x_beginning, 'max': x_end}
+            # Update the filename label
+            self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
+            self.current_filename_label.update()
 
-                # Set the min/max range of the control panel based on the x data
-                self.min_max_range.min = x_beginning
-                self.min_max_range.max = x_end
-                self.min_max_range.value = {'min': x_beginning, 'max': x_end}
-                self.min_max_range.update()
+            # Load the dat file using polars
+            self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)
+            columns = [col for col in self.dat_file_data.columns if col]
+            logger.info(f"Columns loaded: {columns}")
+
+            # Update dropdown options
+            self.graph_dropdown.options = columns
+            self.second_graph_dropdown.options = columns
+            self.graph_dropdown.update()
+            self.second_graph_dropdown.update()
+
+            # Set the initial min and max range based on the x-axis data
+            x_column = self.x_axis_dropdown.value
+            x_data = self.dat_file_data[x_column].to_numpy()
+            x_beginning = x_data.min()
+            x_end = x_data.max()
+
+            # Store the original range for resetting
+            self.original_min_max = {'min': x_beginning, 'max': x_end}
+
+            # Update control panel range
+            self.min_max_range.min = x_beginning
+            self.min_max_range.max = x_end
+            self.min_max_range.value = {'min': x_beginning, 'max': x_end}
+            self.min_max_range.update()
+
+            # Auto-plot the first column or default to instructions
+            if len(columns) > 0:
+                self.graph_dropdown.value = columns[0]
+                self.graph_dropdown.update()
+                self.plot_selected_column()  # Automatically plot the first column
+
         except Exception as ex:
             logger.error(f"Error reading .dat file: {ex}")
-            ui.notify("Error reading .dat file")
+            ui.notify("Error reading file")
         finally:
             # Remove the loading bar after the file is loaded / error occurs
             loading_bar.delete()
