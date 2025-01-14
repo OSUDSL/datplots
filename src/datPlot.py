@@ -63,7 +63,8 @@ class MainDataPage:
             )
 
         # Add a button to save the current graph as a .jpg
-        ui.button("Save Graph as JPG", on_click=self.save_graph_as_jpg, icon="save")
+        ui.button("Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save")
+        ui.button("Save Histogram as JPG", on_click=self.save_histogram_as_jpg, icon="save")
 
         # Display current filename heading
         self.current_filename_label = ui.label("No file loaded").classes("text-lg font-semibold mt-2")
@@ -390,14 +391,14 @@ class MainDataPage:
             'max': np.max(data)
         }
 
-    def save_graph_as_jpg(self):
-        """Save the current graph as a .jpg image."""
+    def save_main_plot_as_jpg(self):
+        """Save the main plot as a .jpg image."""
         if self.dat_file_data is None or not self.is_graph_rendered:
-            ui.notify("No graph to save!", color="red")
+            ui.notify("No main plot to save!", color="red")
             return
 
         try:
-            # Retrieve the currently displayed figure
+            # Retrieve the main plot data
             y_column_1 = self.graph_dropdown.value
             y_column_2 = self.second_graph_dropdown.value
             x_column = self.x_axis_dropdown.value
@@ -428,17 +429,73 @@ class MainDataPage:
             # Generate the filename using a timestamp
             import datetime
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"graph_{timestamp}.jpg"
+            filename = f"main_plot_{timestamp}.jpg"
 
             # Save the figure as a .jpg
             fig.write_image(filename, format="jpg")
 
-            ui.notify(f"Graph saved as {filename}", color="green")
-            logger.info(f"Graph saved as {filename}")
+            ui.notify(f"Main plot saved as {filename}", color="green")
+            logger.info(f"Main plot saved as {filename}")
 
         except Exception as ex:
-            ui.notify(f"Error saving graph: {ex}", color="red")
-            logger.error(f"Error saving graph: {ex}")
+            ui.notify(f"Error saving main plot: {ex}", color="red")
+            logger.error(f"Error saving main plot: {ex}")
+
+    def save_histogram_as_jpg(self):
+        """Save the histogram plot as a .jpg image."""
+        if self.dat_file_data is None or not self.is_graph_rendered:
+            ui.notify("No histogram to save!", color="red")
+            return
+
+        try:
+            # Retrieve histogram data
+            y_column_1 = self.graph_dropdown.value
+            y_column_2 = self.second_graph_dropdown.value
+
+            y_data_1 = self.dat_file_data[y_column_1].to_numpy()
+            y_data_2 = None
+            if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
+                y_data_2 = self.dat_file_data[y_column_2].to_numpy()
+
+            fig = go.Figure()
+
+            # Filter zeros if necessary
+            if self.filter_zeros:
+                y_data_1 = y_data_1[y_data_1 != 0]
+                if y_data_2 is not None:
+                    y_data_2 = y_data_2[y_data_2 != 0]
+
+            # Add histogram for the first Y-axis column
+            if y_data_1 is not None:
+                fig.add_trace(go.Histogram(x=y_data_1, name=f"Histogram of {y_column_1}", opacity=0.7))
+
+            # Add histogram for the second Y-axis column
+            if y_data_2 is not None:
+                fig.add_trace(go.Histogram(x=y_data_2, name=f"Histogram of {y_column_2}", opacity=0.7))
+
+            # Update layout
+            fig.update_layout(
+                template='plotly_dark',
+                title=f"Histogram of {y_column_1} and {y_column_2}",
+                xaxis_title="Y Values",
+                yaxis_title="Frequency",
+                barmode="overlay",
+            )
+
+            # Generate the filename using a timestamp
+            import datetime
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"histogram_{timestamp}.jpg"
+
+            # Save the figure as a .jpg
+            fig.write_image(filename, format="jpg")
+
+            ui.notify(f"Histogram saved as {filename}", color="green")
+            logger.info(f"Histogram saved as {filename}")
+
+        except Exception as ex:
+            ui.notify(f"Error saving histogram: {ex}", color="red")
+            logger.error(f"Error saving histogram: {ex}")
 
 
 def init_gui():
