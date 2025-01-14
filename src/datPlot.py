@@ -64,7 +64,6 @@ class MainDataPage:
 
         # Add a button to save the current graph as a .jpg
         ui.button("Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save")
-        ui.button("Save Histogram as JPG", on_click=self.save_histogram_as_jpg, icon="save")
 
         # Display current filename heading
         self.current_filename_label = ui.label("No file loaded").classes("text-lg font-semibold mt-2")
@@ -110,6 +109,8 @@ class MainDataPage:
 
         # Add a toggle button for filtering zeros (histogram)
         self.filter_zeros = False
+
+        ui.button("Save Histogram as JPG", on_click=self.save_histogram_as_jpg, icon="save")
 
         def toggle_filter():
             self.filter_zeros = not self.filter_zeros
@@ -391,6 +392,7 @@ class MainDataPage:
             'max': np.max(data)
         }
 
+
     def save_main_plot_as_jpg(self):
         """Save the main plot as a .jpg image."""
         if self.dat_file_data is None or not self.is_graph_rendered:
@@ -440,6 +442,7 @@ class MainDataPage:
         except Exception as ex:
             ui.notify(f"Error saving main plot: {ex}", color="red")
             logger.error(f"Error saving main plot: {ex}")
+
 
     def save_histogram_as_jpg(self):
         """Save the histogram plot as a .jpg image."""
