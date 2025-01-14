@@ -14,7 +14,8 @@ dependencies = [
     "scipy",
     "plotly",
     "pywebview",
-    "pendulum"
+    "pendulum",
+    "kaleido"
 ]
 
 [tool.rye]
