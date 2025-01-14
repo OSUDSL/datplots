@@ -169,7 +169,12 @@ class MainDataPage:
 
             # Load the dat file using polars
             self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)
-            columns = [col for col in self.dat_file_data.columns if col]
+
+            # Filter columns to include only ints and floats
+            columns = [
+                col for col, dtype in self.dat_file_data.schema.items()
+                if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
+            ]
             logger.info(f"Columns loaded: {columns}")
 
             # Update dropdown options
