@@ -5,6 +5,7 @@ import polars as pl
 import numpy as np
 import plotly.graph_objects as go
 from loguru import logger
+from datetime import datetime
 
 
 class MainDataPage:
@@ -25,7 +26,7 @@ class MainDataPage:
         self.histogram_container = None  # container for the histogram
         self.menu = None # menu for first plot
         self.filter_zeros = None # filter out 0 val for histogram
-
+        self.is_graph_rendered = False  # flag to check if the graph is rendered
 
 
     def page_creation(self):
@@ -60,6 +61,9 @@ class MainDataPage:
             ui.button(
                 "Load DAT file", on_click=self.pick_dat_file, icon="folder"
             )
+
+        # Add a button to save the current graph as a .jpg
+        ui.button("Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save")
 
         # Display current filename heading
         self.current_filename_label = ui.label("No file loaded").classes("text-lg font-semibold mt-2")
@@ -106,6 +110,8 @@ class MainDataPage:
         # Add a toggle button for filtering zeros (histogram)
         self.filter_zeros = False
 
+        ui.button("Save Histogram as JPG", on_click=self.save_histogram_as_jpg, icon="save")
+
         def toggle_filter():
             self.filter_zeros = not self.filter_zeros
             self.plot_histogram()  # Re-plot the histogram with the new filter state
@@ -118,7 +124,6 @@ class MainDataPage:
         self.stats_container = ui.column()
 
 
-
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
         self.vertical_line_input.value = ""  # Clear the vertical line input
@@ -126,7 +131,6 @@ class MainDataPage:
         self.vertical_line_input.update()
         self.horizontal_line_input.update()
         self.plot_selected_column()  # plot graph without the lines
-
 
 
     async def pick_dat_file(self):
@@ -169,7 +173,12 @@ class MainDataPage:
 
             # Load the dat file using polars
             self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)
-            columns = [col for col in self.dat_file_data.columns if col]
+
+            # Filter columns to include only ints and floats
+            columns = [
+                col for col, dtype in self.dat_file_data.schema.items()
+                if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
+            ]
             logger.info(f"Columns loaded: {columns}")
 
             # Update dropdown options
@@ -205,7 +214,6 @@ class MainDataPage:
         finally:
             # Remove the loading bar after the file is loaded / error occurs
             loading_bar.delete()
-
 
 
     def plot_selected_column(self):
@@ -279,11 +287,14 @@ class MainDataPage:
             with self.plot_container:
                 ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
 
+            self.is_graph_rendered = True
+
             #histogram plot
             self.plot_histogram(y_data_1, y_data_2)
 
             # Update the summary statistics after plotting
             self.update_summary_stats(y_data_1, y_data_2)
+
 
 
 
@@ -334,7 +345,6 @@ class MainDataPage:
             ui.plotly(fig).style('width: 100%; height: 100%;')
 
 
-
     def reset_graph(self):
         """Reset the graph to the original zoom range (full range)."""
         if self.original_min_max:
@@ -344,6 +354,7 @@ class MainDataPage:
 
             # Re-plot the graph with the original range
             self.plot_selected_column()
+
 
     def update_summary_stats(self, y_data_1, y_data_2):
         """Update the summary statistics for the selected columns."""
@@ -370,7 +381,6 @@ class MainDataPage:
                          f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}")
 
 
-
     @staticmethod
     def compute_stats(data):
         """Compute basic statistics for a given data array."""
@@ -382,6 +392,113 @@ class MainDataPage:
             'max': np.max(data)
         }
 
+
+    def save_main_plot_as_jpg(self):
+        """Save the main plot as a .jpg image."""
+        if self.dat_file_data is None or not self.is_graph_rendered:
+            ui.notify("No main plot to save!", color="red")
+            return
+
+        try:
+            # Retrieve the main plot data
+            y_column_1 = self.graph_dropdown.value
+            y_column_2 = self.second_graph_dropdown.value
+            x_column = self.x_axis_dropdown.value
+
+            y_data_1 = self.dat_file_data[y_column_1].to_numpy()
+            x_data = self.dat_file_data[x_column].to_numpy()
+
+            fig = go.Figure(data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis='y1'))
+
+            if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
+                y_data_2 = self.dat_file_data[y_column_2].to_numpy()
+                fig.add_trace(go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis='y2'))
+
+            # Add layout details
+            fig.update_layout(
+                template='plotly_dark',
+                title=f"Plot of {y_column_1} and {y_column_2} vs {x_column}",
+                autosize=True,
+                xaxis=dict(title=x_column),
+                yaxis=dict(title=y_column_1),
+                yaxis2=dict(
+                    title=y_column_2,
+                    overlaying='y',
+                    side='right',
+                )
+            )
+
+            # Generate the filename using a timestamp
+            import datetime
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"main_plot_{timestamp}.jpg"
+
+            # Save the figure as a .jpg
+            fig.write_image(filename, format="jpg")
+
+            ui.notify(f"Main plot saved as {filename}", color="green")
+            logger.info(f"Main plot saved as {filename}")
+
+        except Exception as ex:
+            ui.notify(f"Error saving main plot: {ex}", color="red")
+            logger.error(f"Error saving main plot: {ex}")
+
+
+    def save_histogram_as_jpg(self):
+        """Save the histogram plot as a .jpg image."""
+        if self.dat_file_data is None or not self.is_graph_rendered:
+            ui.notify("No histogram to save!", color="red")
+            return
+
+        try:
+            # Retrieve histogram data
+            y_column_1 = self.graph_dropdown.value
+            y_column_2 = self.second_graph_dropdown.value
+
+            y_data_1 = self.dat_file_data[y_column_1].to_numpy()
+            y_data_2 = None
+            if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
+                y_data_2 = self.dat_file_data[y_column_2].to_numpy()
+
+            fig = go.Figure()
+
+            # Filter zeros if necessary
+            if self.filter_zeros:
+                y_data_1 = y_data_1[y_data_1 != 0]
+                if y_data_2 is not None:
+                    y_data_2 = y_data_2[y_data_2 != 0]
+
+            # Add histogram for the first Y-axis column
+            if y_data_1 is not None:
+                fig.add_trace(go.Histogram(x=y_data_1, name=f"Histogram of {y_column_1}", opacity=0.7))
+
+            # Add histogram for the second Y-axis column
+            if y_data_2 is not None:
+                fig.add_trace(go.Histogram(x=y_data_2, name=f"Histogram of {y_column_2}", opacity=0.7))
+
+            # Update layout
+            fig.update_layout(
+                template='plotly_dark',
+                title=f"Histogram of {y_column_1} and {y_column_2}",
+                xaxis_title="Y Values",
+                yaxis_title="Frequency",
+                barmode="overlay",
+            )
+
+            # Generate the filename using a timestamp
+            import datetime
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"histogram_{timestamp}.jpg"
+
+            # Save the figure as a .jpg
+            fig.write_image(filename, format="jpg")
+
+            ui.notify(f"Histogram saved as {filename}", color="green")
+            logger.info(f"Histogram saved as {filename}")
+
+        except Exception as ex:
+            ui.notify(f"Error saving histogram: {ex}", color="red")
+            logger.error(f"Error saving histogram: {ex}")
 
 
 def init_gui():
