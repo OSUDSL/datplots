@@ -142,10 +142,10 @@ class MainDataPage:
             # Show the file dialog
             result = await app.native.main_window.create_file_dialog()
 
-            if not result:
-                # User canceled the dialog
-                ui.notify("No file selected")
-                return  # Exit the function
+            # if not result:
+            #     # User canceled the dialog
+            #     ui.notify("No file selected")
+            #     return  # Exit the function
 
             # If a file was selected
             self.dat_filename = result[0]
@@ -286,6 +286,13 @@ class MainDataPage:
             # Add the new plot
             with self.plot_container:
                 ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
+
+            #TODO Testing new echart functionality
+            # echart = ui.echart({
+            #     'xAxis': {'type': 'value'},
+            #     'yAxis': {'type': 'value'},
+            #     'series': {'line', }
+            # });
 
             self.is_graph_rendered = True
 
