@@ -287,6 +287,9 @@ class MainDataPage:
             # with self.plot_container:
             #     ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
 
+            # TODO:
+                # -Make plotting line work correctly
+                # -Create zoom functionality with datazoom
             
             fig = {'title': {'text':f"Plot of {y_column_1} vs {x_column}",
                               'textVerticalAlign': 'top'},
@@ -301,7 +304,7 @@ class MainDataPage:
                               'scale': True,
                               'nameLocation': 'center',
                               'nameGap': 40}],
-                    'series': [{'type': 'scatter', 'data': y_data_1}]}
+                    'series': [{'type': 'line', 'data': y_data_1}]}
             
             if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
                 y_data_2 = self.dat_file_data[y_column_2].to_numpy()
