@@ -68,41 +68,42 @@ class MainDataPage:
         # Display current filename heading
         self.current_filename_label = ui.label("No file loaded").classes("text-lg font-semibold mt-2")
 
-        # containers for plot1
-        self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
-
+       
         # Add control panel in an expansion panel
-        with ui.expansion("Control Panel", icon="settings", value=False).style(
-                "background-color: #0e7af3; color: white; border-radius: 5px; padding: 5px;"
-        ):
-            with ui.column().style("padding: 10px;"):
+        with ui.expansion().style('background-color:#1f1f1f; border-radius: 10px;') as expansion:
+            with expansion.add_slot('header'):
+                ui.icon("settings").style("color: white; border-radius: 5px; font-size: 30px; ")
+            with ui.row().style('width:100%; display:flex;'):
                 # Range slider for zooming
                 self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
                 self.min_max_range.on('change', self.plot_selected_column)
 
                 # Display selected min and max range
-                self.control_panel = ui.label().bind_text_from(
+                ui.label().style('flex:3; text-align:center;').bind_text_from(
                     self.min_max_range, 'value',
-                    backward=lambda v: f'min: {v["min"]}, max: {v["max"]}'
-                )
-
+                    backward=lambda v: f'Min: {v["min"]}, Max: {v["max"]}')
+                
                 # Reset button to restore original zoom
-                ui.button("Reset Zoom", on_click=self.reset_graph)
+                ui.button("Reset Zoom", on_click=self.reset_graph).style('flex:1; text-align:center; border-radius: 10px;').props('color=dark')
 
                 # Horizontal layout for the remaining inputs and buttons
-                with ui.row().style("margin-top: 10px;"):
+                with ui.row().style('width:100%; display:flex;'):
                     # Input for vertical line position
                     self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change',
-                                                                                         self.plot_selected_column)
-                    # Input for horizontal line position
+                                                                                            self.plot_selected_column).style('flex:2;')
+                     # Input for horizontal line position
                     self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change',
-                                                                                             self.plot_selected_column)
+                                                                                                self.plot_selected_column).style('flex:2;')
 
                     # Button to reset lines
-                    ui.button("Reset Lines", on_click=self.reset_lines)
+                    ui.button("Reset Lines", on_click=self.reset_lines).style('margin-top: 15px; border-radius: 10px;flex:1;').props('color=dark')
+
+        # containers for plot1
+        self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
+
 
         # Add a separator between the control panel and histogram plot
-        ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
+        ui.separator().style("margin-top: 5px; margin-bottom: 10px;")
 
         # container for histogram plot
         self.histogram_container = ui.element('div').style('width: 100%; height: 100vh;')
@@ -142,10 +143,10 @@ class MainDataPage:
             # Show the file dialog
             result = await app.native.main_window.create_file_dialog()
 
-            if not result:
-                # User canceled the dialog
-                ui.notify("No file selected")
-                return  # Exit the function
+            # if not result:
+            #     # User canceled the dialog
+            #     ui.notify("No file selected")
+            #     return  # Exit the function
 
             # If a file was selected
             self.dat_filename = result[0]
@@ -234,113 +235,75 @@ class MainDataPage:
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             y_data_2 = None
 
-            # # Create the first trace for the left y-axis
-            # fig = go.Figure(data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis='y1'))
+            # Create the first trace for the left y-axis
+            fig = go.Figure(data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis='y1'))
 
-            # # If a second Y-axis column is selected, add it as a second trace
-            # if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
-            #     y_data_2 = self.dat_file_data[y_column_2].to_numpy()
-            #     fig.add_trace(go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis='y2'))
+            plotTitle = f"Plot of {y_column_1} vs {x_column}" 
 
-            # # Update layout to add second Y-axis on the right side
-            # fig.update_layout(
-            #     template='plotly_dark',
-            #     title=f"Plot of {y_column_1} and {y_column_2} vs {x_column}",
-            #     autosize=True,  # plot auto-resize
-            #     height=None,  # height determined by the container
-            #     yaxis=dict(
-            #         title=y_column_1,
-            #         side="left"
-            #     ),
-            #     yaxis2=dict(
-            #         title=y_column_2,
-            #         side="right",
-            #         overlaying="y",  # Overlay on the same x-axis
-            #         position=1  # Position the second Y-axis on the right
-            #     ),
-            #     xaxis=dict(
-            #         title=x_column,
-            #         range=[zoom_min, zoom_max],  # Use zoom range based on the control panel
-            #     )
-            # )
-
-            # # Add vertical line if x position is provided
-            # if self.vertical_line_input.value:
-            #     try:
-            #         x_position = float(self.vertical_line_input.value)
-            #         fig.add_vline(x=x_position, line_dash="dash", line_color="green")
-            #     except ValueError:
-            #         logger.error("Invalid vertical line position")
-
-            # # Add horizontal line if y position is provided
-            # if self.horizontal_line_input.value:
-            #     try:
-            #         y_position = float(self.horizontal_line_input.value)
-            #         fig.add_hline(y=y_position, line_dash="dash", line_color="yellow")
-            #     except ValueError:
-            #         logger.error("Invalid horizontal line position")
-
-            # # Clear the container before adding the new plot
-            # self.plot_container.clear()  # Remove previous plot
-
-            # # Add the new plot
-            # with self.plot_container:
-            #     ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
-
-            # TODO:
-                # -Make plotting line work correctly
-                # -Create zoom functionality with datazoom
-            
-            fig = {'title': {'text':f"Plot of {y_column_1} vs {x_column}",
-                              'textVerticalAlign': 'top'},
-                    'xAxis': {'type': 'value',
-                              'data': x_data,
-                              'scale': True,
-                              'name': x_column,
-                              'nameLocation': 'center',
-                              'nameGap': 30},
-                    'yAxis': [{'type': 'value', 
-                              'name': y_column_1,
-                              'scale': True,
-                              'nameLocation': 'center',
-                              'nameGap': 40}],
-                    'series': [{'type': 'line', 'data': y_data_1}]}
-            
+            # If a second Y-axis column is selected, add it as a second trace
             if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
                 y_data_2 = self.dat_file_data[y_column_2].to_numpy()
-                fig['title']['text'] = f"Plot of {y_column_1} and {y_column_2} vs {x_column}"
-                fig['yAxis'].extend([{'type': 'value',
-                                      'name': y_column_2,
-                                      'position': 'right',
-                                      'alignTicks': True,
-                                      'nameLocation': 'center',
-                                      'nameGap': 40 }])
-                fig['series'].extend([{'type': 'line', 
-                                       'data': y_data_2, 
-                                       'yAxisIndex': 1}])
-                
-          
-          
+                fig.add_trace(go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis='y2'))
+                plotTitle = f"Plot of {y_column_1} and {y_column_2} vs {x_column}" 
+
+
+            # Update layout to add second Y-axis on the right side
+            fig.update_layout(
+                template='plotly_dark',
+                title=plotTitle,
+                autosize=True,  # plot auto-resize
+                height=None,  # height determined by the container
+                yaxis=dict(
+                    title=y_column_1,
+                    side="left"
+                ),
+                yaxis2=dict(
+                    title=y_column_2,
+                    side="right",
+                    overlaying="y",  # Overlay on the same x-axis
+                    position=1  # Position the second Y-axis on the right
+                ),
+                xaxis=dict(
+                    title=x_column,
+                    range=[zoom_min, zoom_max],  # Use zoom range based on the control panel
+                )
+            )
+
+            # Add vertical line if x position is provided
             if self.vertical_line_input.value:
                 try:
                     x_position = float(self.vertical_line_input.value)
                     fig.add_vline(x=x_position, line_dash="dash", line_color="green")
                 except ValueError:
                     logger.error("Invalid vertical line position")
-          
-            self.plot_container.clear()
+
+            # Add horizontal line if y position is provided
+            if self.horizontal_line_input.value:
+                try:
+                    y_position = float(self.horizontal_line_input.value)
+                    fig.add_hline(y=y_position, line_dash="dash", line_color="yellow")
+                except ValueError:
+                    logger.error("Invalid horizontal line position")
+
+           
+           # Add the range slider
+            fig.update_layout(xaxis=dict(rangeslider=dict(visible=True)))
+           
+        
+            # Clear the container before adding the new plot
+            self.plot_container.clear()  # Remove previous plot
+
+            # Add the new plot
             with self.plot_container:
-                ui.echart(fig).style('width: 100%; height: 100%;')
-
-
+                ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
             
             self.is_graph_rendered = True
 
             #histogram plot
-            #self.plot_histogram(y_data_1, y_data_2)
+            self.plot_histogram(y_data_1, y_data_2)
 
             # Update the summary statistics after plotting
-            #self.update_summary_stats(y_data_1, y_data_2)
+            self.update_summary_stats(y_data_1, y_data_2)
 
 
 
