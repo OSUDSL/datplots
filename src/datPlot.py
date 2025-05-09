@@ -27,6 +27,10 @@ class MainDataPage:
         self.menu = None # menu for first plot
         self.filter_zeros = None # filter out 0 val for histogram
         self.is_graph_rendered = False  # flag to check if the graph is rendered
+        self.zoomMax = None
+        self.zoomMin = None
+        self.boxToggle = True
+        self.toggleButton = None
 
 
     def page_creation(self):
@@ -75,19 +79,20 @@ class MainDataPage:
                 ui.icon("settings").style("color: white; border-radius: 5px; font-size: 30px; ")
             with ui.row().style('width:100%; display:flex;'):
                 # Range slider for zooming
-                self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
-                self.min_max_range.on('change', self.plot_selected_column)
+                #self.min_max_range.value = {'min': 0, 'max': 100}
+                #self.min_max_range.on('change', self.plot_selected_column)
 
-                # Display selected min and max range
-                ui.label().style('flex:3; text-align:center;').bind_text_from(
-                    self.min_max_range, 'value',
-                    backward=lambda v: f'Min: {v["min"]}, Max: {v["max"]}')
+                # # Display selected min and max range
+                # ui.label().style('flex:3; text-align:center;').bind_text_from(
+                #     self.min_max_range, 'value',
+                #     backward=lambda v: f'Min: {v["min"]}, Max: {v["max"]}')
                 
-                # Reset button to restore original zoom
-                ui.button("Reset Zoom", on_click=self.reset_graph).style('flex:1; text-align:center; border-radius: 10px;').props('color=dark')
-
+                
                 # Horizontal layout for the remaining inputs and buttons
                 with ui.row().style('width:100%; display:flex;'):
+
+                    self.toggleButton = ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box).style('flex:1; margin-top:5px;font-size:13px').props('color=dark')
+
                     # Input for vertical line position
                     self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change',
                                                                                             self.plot_selected_column).style('flex:2;')
@@ -95,8 +100,13 @@ class MainDataPage:
                     self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change',
                                                                                                 self.plot_selected_column).style('flex:2;')
 
-                    # Button to reset lines
-                    ui.button("Reset Lines", on_click=self.reset_lines).style('margin-top: 15px; border-radius: 10px;flex:1;').props('color=dark')
+                    with ui.column():
+                        # Button to reset lines
+                        ui.button("Reset Lines", on_click=self.reset_lines).style('border-radius: 10px;flex:1; font-size:10px').props('color=dark')
+
+                        # Reset button to restore original zoom
+                        ui.button("Reset Zoom", on_click=self.reset_graph).style('flex:1; text-align:center; border-radius: 10px;font-size:10px').props('color=dark')
+
 
         # containers for plot1
         self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
@@ -143,11 +153,6 @@ class MainDataPage:
             # Show the file dialog
             result = await app.native.main_window.create_file_dialog()
 
-            # if not result:
-            #     # User canceled the dialog
-            #     ui.notify("No file selected")
-            #     return  # Exit the function
-
             # If a file was selected
             self.dat_filename = result[0]
             logger.info(f"DAT file {self.dat_filename} selected")
@@ -165,8 +170,8 @@ class MainDataPage:
             self.second_graph_dropdown.update()
 
             # Reset control panel
-            self.min_max_range.value = {'min': 0, 'max': 100}
-            self.min_max_range.update()
+            # self.min_max_range.value = {'min': 0, 'max': 100}
+            # self.min_max_range.update()
 
             # Update the filename label
             self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
@@ -197,11 +202,11 @@ class MainDataPage:
             # Store the original range for resetting
             self.original_min_max = {'min': x_beginning, 'max': x_end}
 
-            # Update control panel range
-            self.min_max_range.min = x_beginning
-            self.min_max_range.max = x_end
-            self.min_max_range.value = {'min': x_beginning, 'max': x_end}
-            self.min_max_range.update()
+            # # Update control panel range
+            # self.min_max_range.min = x_beginning
+            # self.min_max_range.max = x_end
+            # self.min_max_range.value = {'min': x_beginning, 'max': x_end}
+            # self.min_max_range.update()
 
             # Auto-plot the first column or default to instructions
             if len(columns) > 0:
@@ -229,8 +234,8 @@ class MainDataPage:
             x_data = self.dat_file_data[x_column].to_numpy()
 
             # Get selected min and max values from the control panel for zooming
-            zoom_min = self.min_max_range.value['min']
-            zoom_max = self.min_max_range.value['max']
+            # self.zoom_min = self.min_max_range.value['min']
+            # self.zoom_max = self.min_max_range.value['max']
 
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             y_data_2 = None
@@ -255,7 +260,8 @@ class MainDataPage:
                 height=None,  # height determined by the container
                 yaxis=dict(
                     title=y_column_1,
-                    side="left"
+                    side="left",
+                    fixedrange=self.boxToggle
                 ),
                 yaxis2=dict(
                     title=y_column_2,
@@ -265,7 +271,9 @@ class MainDataPage:
                 ),
                 xaxis=dict(
                     title=x_column,
-                    range=[zoom_min, zoom_max],  # Use zoom range based on the control panel
+                    range=[self.zoomMin, self.zoomMax],  # Use zoom range based on the control panel
+                    rangeslider=dict(
+                        visible=True)
                 )
             )
 
@@ -287,7 +295,7 @@ class MainDataPage:
 
            
            # Add the range slider
-            fig.update_layout(xaxis=dict(rangeslider=dict(visible=True)))
+            # fig.update_layout(xaxis=dict(rangeslider=dict(visible=True)))
            
         
             # Clear the container before adding the new plot
@@ -359,11 +367,19 @@ class MainDataPage:
         """Reset the graph to the original zoom range (full range)."""
         if self.original_min_max:
             # Reset the control panel range to the original min and max
-            self.min_max_range.value = self.original_min_max
-            self.min_max_range.update()
-
+            self.zoomMin = self.original_min_max['min']
+            self.zoomMax = self.original_min_max['max']
+            
             # Re-plot the graph with the original range
             self.plot_selected_column()
+
+    def update_toggle_box(self):
+        self.boxToggle = not self.boxToggle
+        if self.boxToggle:
+            self.toggleButton.props('color=dark')
+        else:
+            self.toggleButton.props('color=blue-10')
+        self.plot_selected_column()
 
 
     def update_summary_stats(self, y_data_1, y_data_2):
