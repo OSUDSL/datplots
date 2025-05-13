@@ -31,6 +31,11 @@ class MainDataPage:
         self.zoomMin = None
         self.boxToggle = True
         self.toggleButton = None
+        self.recentFiles = ['','','','','']
+        self.load_file_button = None
+        self.dat_filename = ""
+        self.recent = False
+        self.recent_num = -1
 
 
     def page_creation(self):
@@ -62,13 +67,13 @@ class MainDataPage:
                 on_change=self.plot_selected_column,  # column selection
             )
 
-            ui.button(
-                "Load DAT file", on_click=self.pick_dat_file, icon="folder"
-            )
+            self.load_file_button = ui.dropdown_button("Load DAT file", on_click=self.get_path, icon="folder", split=True, auto_close=True)
+            self.load_recents()
+                
 
         # Add a button to save the current graph as a .jpg
         ui.button("Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save")
-
+        
         # Display current filename heading
         self.current_filename_label = ui.label("No file loaded").classes("text-lg font-semibold mt-2")
 
@@ -78,16 +83,7 @@ class MainDataPage:
             with expansion.add_slot('header'):
                 ui.icon("settings").style("color: white; border-radius: 5px; font-size: 30px; ")
             with ui.row().style('width:100%; display:flex;'):
-                # Range slider for zooming
-                #self.min_max_range.value = {'min': 0, 'max': 100}
-                #self.min_max_range.on('change', self.plot_selected_column)
 
-                # # Display selected min and max range
-                # ui.label().style('flex:3; text-align:center;').bind_text_from(
-                #     self.min_max_range, 'value',
-                #     backward=lambda v: f'Min: {v["min"]}, Max: {v["max"]}')
-                
-                
                 # Horizontal layout for the remaining inputs and buttons
                 with ui.row().style('width:100%; display:flex;'):
 
@@ -143,83 +139,105 @@ class MainDataPage:
         self.horizontal_line_input.update()
         self.plot_selected_column()  # plot graph without the lines
 
+    def load_recents(self):
+        if self.load_file_button:
+            self.load_file_button.clear()
 
-    async def pick_dat_file(self):
-        # Show a loading progress bar
-        loading_bar = ui.linear_progress(value=0).style("margin-top: 10px;").bind_value_to(
-            lambda: 1  # Sets progress to full when loaded
-        )
+        with self.load_file_button:
+            ui.item(f'{self.recentFiles[0]}', on_click=lambda: self.pick_recent(0))
+            ui.item(f'{self.recentFiles[1]}', on_click=lambda: self.pick_recent(1))
+            ui.item(f'{self.recentFiles[2]}', on_click=lambda: self.pick_recent(2))
+            ui.item(f'{self.recentFiles[3]}', on_click=lambda: self.pick_recent(3))
+            ui.item(f'{self.recentFiles[4]}', on_click=lambda: self.pick_recent(4))
+
+            
+    def pick_recent(self,num):
+        self.recent = True
+        self.dat_filename = self.recentFiles[num]
+        self.add_new_file()
+        self.pick_dat_file()
+        
+    async def get_path(self):
         try:
-            # Show the file dialog
             result = await app.native.main_window.create_file_dialog()
-
             # If a file was selected
             self.dat_filename = result[0]
-            logger.info(f"DAT file {self.dat_filename} selected")
-
-            # Clear previous plots and histograms
-            self.plot_container.clear()
-            self.histogram_container.clear()
-
-            # Reset dropdowns
-            self.graph_dropdown.value = "Select Graph"
-            self.second_graph_dropdown.value = "Select Graph"
-            self.graph_dropdown.options = []
-            self.second_graph_dropdown.options = []
-            self.graph_dropdown.update()
-            self.second_graph_dropdown.update()
-
-            # Reset control panel
-            # self.min_max_range.value = {'min': 0, 'max': 100}
-            # self.min_max_range.update()
-
-            # Update the filename label
-            self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
-            self.current_filename_label.update()
-
-            # Load the dat file using polars
-            self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)
-
-            # Filter columns to include only ints and floats
-            columns = [
-                col for col, dtype in self.dat_file_data.schema.items()
-                if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
-            ]
-            logger.info(f"Columns loaded: {columns}")
-
-            # Update dropdown options
-            self.graph_dropdown.options = columns
-            self.second_graph_dropdown.options = columns
-            self.graph_dropdown.update()
-            self.second_graph_dropdown.update()
-
-            # Set the initial min and max range based on the x-axis data
-            x_column = self.x_axis_dropdown.value
-            x_data = self.dat_file_data[x_column].to_numpy()
-            x_beginning = x_data.min()
-            x_end = x_data.max()
-
-            # Store the original range for resetting
-            self.original_min_max = {'min': x_beginning, 'max': x_end}
-
-            # # Update control panel range
-            # self.min_max_range.min = x_beginning
-            # self.min_max_range.max = x_end
-            # self.min_max_range.value = {'min': x_beginning, 'max': x_end}
-            # self.min_max_range.update()
-
-            # Auto-plot the first column or default to instructions
-            if len(columns) > 0:
-                self.graph_dropdown.value = columns[0]
-                self.graph_dropdown.update()
-                self.plot_selected_column()  # Automatically plot the first column
+            
+            self.add_new_file()
+            self.pick_dat_file()
 
         except Exception as ex:
             logger.error(f"Error reading .dat file: {ex}")
             ui.notify("Error reading file")
-        finally:
-            # Remove the loading bar after the file is loaded / error occurs
-            loading_bar.delete()
+
+
+    def add_new_file(self):            
+
+        if self.dat_filename in self.recentFiles:
+            self.recentFiles.remove(self.dat_filename)
+
+        self.recentFiles.insert(0, self.dat_filename)
+
+        if len(self.recentFiles) > 5:
+            self.recentFiles.pop()
+
+        self.load_recents()
+
+   
+    def pick_dat_file(self):
+
+        logger.info(f"DAT file {self.dat_filename} selected")
+
+        # Clear previous plots and histograms
+        if self.plot_container:
+            self.plot_container.clear()
+        if self.histogram_container:
+            self.histogram_container.clear()
+
+        # Reset dropdowns
+        self.graph_dropdown.value = "Select Graph"
+        self.second_graph_dropdown.value = "Select Graph"
+        self.graph_dropdown.options = []
+        self.second_graph_dropdown.options = []
+        self.graph_dropdown.update()
+        self.second_graph_dropdown.update()
+
+        # Update the filename label
+        self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
+        self.current_filename_label.update()
+
+        # Load the dat file using polars
+        self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)
+
+        # Filter columns to include only ints and floats
+        columns = [
+            col for col, dtype in self.dat_file_data.schema.items()
+            if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
+        ]
+
+        logger.info(f"Columns loaded: {columns}")
+
+        # Update dropdown options
+        self.graph_dropdown.options = columns
+        self.second_graph_dropdown.options = columns
+        self.graph_dropdown.update()
+        self.second_graph_dropdown.update()
+
+        # Set the initial min and max range based on the x-axis data
+        x_column = self.x_axis_dropdown.value
+        x_data = self.dat_file_data[x_column].to_numpy()
+        x_beginning = x_data.min()
+        x_end = x_data.max()
+
+        # Store the original range for resetting
+        self.original_min_max = {'min': x_beginning, 'max': x_end}
+
+        # Auto-plot the first column or default to instructions
+        if len(columns) > 0:
+            self.graph_dropdown.value = columns[0]
+            self.graph_dropdown.update()
+            self.plot_selected_column()  # Automatically plot the first column`
+
 
 
     def plot_selected_column(self):
