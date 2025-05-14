@@ -6,6 +6,8 @@ import numpy as np
 import plotly.graph_objects as go
 from loguru import logger
 from datetime import datetime
+from appdirs import AppDirs
+import toml
 
 
 class MainDataPage:
@@ -31,14 +33,25 @@ class MainDataPage:
         self.zoomMin = None
         self.boxToggle = True
         self.toggleButton = None
-        self.recentFiles = ['','','','','']
         self.load_file_button = None
         self.dat_filename = ""
         self.recent = False
         self.recent_num = -1
+        self.recentFiles = ['','','','','']
+        self.dir_loc = ""
+        self.recents_fileName = ""
+        self.filepath = ""
+
 
 
     def page_creation(self):
+        self.dir_loc = AppDirs("DatPlot", "DSL").user_config_dir
+        self.recents_fileName = 'recent_history.toml'
+        self.filepath = os.path.join(self.dir_loc, self.recents_fileName)
+        os.makedirs(os.path.dirname(self.dir_loc), exist_ok=True)
+        self.load_recent_files()
+
+
         # Create the main UI elements
         with ui.row(align_items="center").style("width:100%"):
             ui.label("Dat File Plot").classes("text-2xl font-bold mb-2")
@@ -67,8 +80,11 @@ class MainDataPage:
                 on_change=self.plot_selected_column,  # column selection
             )
 
+
+
             self.load_file_button = ui.dropdown_button("Load DAT file", on_click=self.get_path, icon="folder", split=True, auto_close=True)
             self.load_recents()
+
                 
 
         # Add a button to save the current graph as a .jpg
@@ -182,8 +198,32 @@ class MainDataPage:
             self.recentFiles.pop()
 
         self.load_recents()
+        self.persist_recent_files()
 
-   
+
+    def load_recent_files(self):
+        if os.path.exists(self.filepath):
+            with open(self.filepath, "r") as file:
+                dataFile = toml.load(file)
+                self.recentFiles[0] = dataFile["recents"]["1"]
+                self.recentFiles[1] = dataFile["recents"]["2"]
+                self.recentFiles[2] = dataFile["recents"]["3"]
+                self.recentFiles[3] = dataFile["recents"]["4"]
+                self.recentFiles[4] = dataFile["recents"]["5"]
+            
+    def persist_recent_files(self):
+        data = {
+        "recents": {
+            "1": f"{self.recentFiles[0]}",
+            "2": f"{self.recentFiles[1]}",
+            "3": f"{self.recentFiles[2]}",
+            "4": f"{self.recentFiles[3]}",
+            "5": f"{self.recentFiles[4]}",
+        }}
+               
+        with open(self.filepath, 'w') as file:
+            toml.dump(data, file)
+
     def pick_dat_file(self):
 
         logger.info(f"DAT file {self.dat_filename} selected")
@@ -545,7 +585,9 @@ class MainDataPage:
             logger.error(f"Error saving histogram: {ex}")
 
 
+
 def init_gui():
+
     page = MainDataPage()
     page.page_creation()
 
