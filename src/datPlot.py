@@ -595,9 +595,13 @@ def init_gui():
     dark = ui.dark_mode()
     dark.enable()
 
-    # Start the NiceGUI app
-    ui.run(native=True)
+    app.on_shutdown(shutdown_handler)
 
+    # Start the NiceGUI app
+    ui.run(native=True,reload=False)
+
+def shutdown_handler():
+    app.shutdown()
 
 if __name__ in {"__main__", "__mp_main__"}:
     init_gui()
