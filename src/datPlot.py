@@ -8,26 +8,27 @@ from loguru import logger
 from datetime import datetime
 from appdirs import AppDirs
 import toml
+from pathlib import Path
 
 
 class MainDataPage:
     def __init__(self) -> None:
         """The page is created as soon as the class is instantiated."""
         self.main_layout = None
-        self.graph_dropdown = None # first dropdown for y-axis
+        self.graph_dropdown = None  # first dropdown for y-axis
         self.second_graph_dropdown = None  # second dropdown for y-axis
-        self.x_axis_dropdown = None #dropdown for x axis
+        self.x_axis_dropdown = None  # dropdown for x axis
         self.dat_file_data = None  # store dat file data
         self.plot_container = None  # container for the plot
-        self.min_max_range = None #store min and max x values
-        self.control_panel = None #control panel to change x axis
-        self.reset = None #reset button for control panel
+        self.min_max_range = None  # store min and max x values
+        self.control_panel = None  # control panel to change x axis
+        self.reset = None  # reset button for control panel
         self.original_min_max = None  # store the original full range for resetting
         self.vertical_line_input = None  # input for vertical line position
         self.horizontal_line_input = None  # input for horizontal line position
         self.histogram_container = None  # container for the histogram
-        self.menu = None # menu for first plot
-        self.filter_zeros = None # filter out 0 val for histogram
+        self.menu = None  # menu for first plot
+        self.filter_zeros = None  # filter out 0 val for histogram
         self.is_graph_rendered = False  # flag to check if the graph is rendered
         self.zoomMax = None
         self.zoomMin = None
@@ -37,20 +38,18 @@ class MainDataPage:
         self.dat_filename = ""
         self.recent = False
         self.recent_num = -1
-        self.recentFiles = ['','','','','']
+        self.recentFiles = ["", "", "", "", ""]
         self.dir_loc = ""
         self.recents_fileName = ""
         self.filepath = ""
 
-
-
     def page_creation(self):
-        self.dir_loc = AppDirs("DatPlot", "DSL").user_config_dir
-        self.recents_fileName = 'recent_history.toml'
-        self.filepath = os.path.join(self.dir_loc, self.recents_fileName)
-        os.makedirs(os.path.dirname(self.dir_loc), exist_ok=True)
+        self.dir_loc = Path(AppDirs("DatPlot", "DSL").user_config_dir)
+        self.recents_fileName = "recent_history.toml"
+        self.filepath = self.dir_loc / Path(self.recents_fileName)
+        self.dir_loc.mkdir(parents=True, exist_ok=True)
+        logger.warning("Creating directory for recents file: " + str(self.dir_loc))
         self.load_recent_files()
-
 
         # Create the main UI elements
         with ui.row(align_items="center").style("width:100%"):
@@ -61,7 +60,7 @@ class MainDataPage:
             self.x_axis_dropdown = ui.select(
                 ["SimTime", "DatTime"],
                 value="SimTime",  # Defaults to SimTime
-                label="Select X-axis"
+                label="Select X-axis",
             )
 
             # Dropdown for y-axis (column) selection
@@ -80,60 +79,85 @@ class MainDataPage:
                 on_change=self.plot_selected_column,  # column selection
             )
 
-
-
-            self.load_file_button = ui.dropdown_button("Load DAT file", on_click=self.get_path, icon="folder", split=True, auto_close=True)
+            self.load_file_button = ui.dropdown_button(
+                "Load DAT file",
+                on_click=self.get_path,
+                icon="folder",
+                split=True,
+                auto_close=True,
+            )
             self.load_recents()
 
-                
-
         # Add a button to save the current graph as a .jpg
-        ui.button("Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save")
-        
+        ui.button(
+            "Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save"
+        )
+
         # Display current filename heading
-        self.current_filename_label = ui.label("No file loaded").classes("text-lg font-semibold mt-2")
+        self.current_filename_label = ui.label("No file loaded").classes(
+            "text-lg font-semibold mt-2"
+        )
 
-       
         # Add control panel in an expansion panel
-        with ui.expansion().style('background-color:#1f1f1f; border-radius: 10px;') as expansion:
-            with expansion.add_slot('header'):
-                ui.icon("settings").style("color: white; border-radius: 5px; font-size: 30px; ")
-            with ui.row().style('width:100%; display:flex;'):
-
+        with ui.expansion().style(
+            "background-color:#1f1f1f; border-radius: 10px;"
+        ) as expansion:
+            with expansion.add_slot("header"):
+                ui.icon("settings").style(
+                    "color: white; border-radius: 5px; font-size: 30px; "
+                )
+            with ui.row().style("width:100%; display:flex;"):
                 # Horizontal layout for the remaining inputs and buttons
-                with ui.row().style('width:100%; display:flex;'):
-
-                    self.toggleButton = ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box).style('flex:1; margin-top:5px;font-size:13px').props('color=dark')
+                with ui.row().style("width:100%; display:flex;"):
+                    self.toggleButton = (
+                        ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box)
+                        .style("flex:1; margin-top:5px;font-size:13px")
+                        .props("color=dark")
+                    )
 
                     # Input for vertical line position
-                    self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change',
-                                                                                            self.plot_selected_column).style('flex:2;')
-                     # Input for horizontal line position
-                    self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change',
-                                                                                                self.plot_selected_column).style('flex:2;')
+                    self.vertical_line_input = (
+                        ui.input("Vertical Line Position (X)")
+                        .on("change", self.plot_selected_column)
+                        .style("flex:2;")
+                    )
+                    # Input for horizontal line position
+                    self.horizontal_line_input = (
+                        ui.input("Horizontal Line Position (Y)")
+                        .on("change", self.plot_selected_column)
+                        .style("flex:2;")
+                    )
 
                     with ui.column():
                         # Button to reset lines
-                        ui.button("Reset Lines", on_click=self.reset_lines).style('border-radius: 10px;flex:1; font-size:10px').props('color=dark')
+                        ui.button("Reset Lines", on_click=self.reset_lines).style(
+                            "border-radius: 10px;flex:1; font-size:10px"
+                        ).props("color=dark")
 
                         # Reset button to restore original zoom
-                        ui.button("Reset Zoom", on_click=self.reset_graph).style('flex:1; text-align:center; border-radius: 10px;font-size:10px').props('color=dark')
-
+                        ui.button("Reset Zoom", on_click=self.reset_graph).style(
+                            "flex:1; text-align:center; border-radius: 10px;font-size:10px"
+                        ).props("color=dark")
 
         # containers for plot1
-        self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
-
+        self.plot_container = ui.element("div").style(
+            "width: 100%; height: 100vh;"
+        )  # Full width, dynamic height
 
         # Add a separator between the control panel and histogram plot
         ui.separator().style("margin-top: 5px; margin-bottom: 10px;")
 
         # container for histogram plot
-        self.histogram_container = ui.element('div').style('width: 100%; height: 100vh;')
+        self.histogram_container = ui.element("div").style(
+            "width: 100%; height: 100vh;"
+        )
 
         # Add a toggle button for filtering zeros (histogram)
         self.filter_zeros = False
 
-        ui.button("Save Histogram as JPG", on_click=self.save_histogram_as_jpg, icon="save")
+        ui.button(
+            "Save Histogram as JPG", on_click=self.save_histogram_as_jpg, icon="save"
+        )
 
         def toggle_filter():
             self.filter_zeros = not self.filter_zeros
@@ -145,7 +169,6 @@ class MainDataPage:
         # Stats
         ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
         self.stats_container = ui.column()
-
 
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
@@ -160,25 +183,24 @@ class MainDataPage:
             self.load_file_button.clear()
 
         with self.load_file_button:
-            ui.item(f'{self.recentFiles[0]}', on_click=lambda: self.pick_recent(0))
-            ui.item(f'{self.recentFiles[1]}', on_click=lambda: self.pick_recent(1))
-            ui.item(f'{self.recentFiles[2]}', on_click=lambda: self.pick_recent(2))
-            ui.item(f'{self.recentFiles[3]}', on_click=lambda: self.pick_recent(3))
-            ui.item(f'{self.recentFiles[4]}', on_click=lambda: self.pick_recent(4))
+            ui.item(f"{self.recentFiles[0]}", on_click=lambda: self.pick_recent(0))
+            ui.item(f"{self.recentFiles[1]}", on_click=lambda: self.pick_recent(1))
+            ui.item(f"{self.recentFiles[2]}", on_click=lambda: self.pick_recent(2))
+            ui.item(f"{self.recentFiles[3]}", on_click=lambda: self.pick_recent(3))
+            ui.item(f"{self.recentFiles[4]}", on_click=lambda: self.pick_recent(4))
 
-            
-    def pick_recent(self,num):
+    def pick_recent(self, num):
         self.recent = True
         self.dat_filename = self.recentFiles[num]
         self.add_new_file()
         self.pick_dat_file()
-        
+
     async def get_path(self):
         try:
             result = await app.native.main_window.create_file_dialog()
             # If a file was selected
             self.dat_filename = result[0]
-            
+
             self.add_new_file()
             self.pick_dat_file()
 
@@ -186,9 +208,7 @@ class MainDataPage:
             logger.error(f"Error reading .dat file: {ex}")
             ui.notify("Error reading file")
 
-
-    def add_new_file(self):            
-
+    def add_new_file(self):
         if self.dat_filename in self.recentFiles:
             self.recentFiles.remove(self.dat_filename)
 
@@ -200,7 +220,6 @@ class MainDataPage:
         self.load_recents()
         self.persist_recent_files()
 
-
     def load_recent_files(self):
         if os.path.exists(self.filepath):
             with open(self.filepath, "r") as file:
@@ -210,22 +229,22 @@ class MainDataPage:
                 self.recentFiles[2] = dataFile["recents"]["3"]
                 self.recentFiles[3] = dataFile["recents"]["4"]
                 self.recentFiles[4] = dataFile["recents"]["5"]
-            
+
     def persist_recent_files(self):
         data = {
-        "recents": {
-            "1": f"{self.recentFiles[0]}",
-            "2": f"{self.recentFiles[1]}",
-            "3": f"{self.recentFiles[2]}",
-            "4": f"{self.recentFiles[3]}",
-            "5": f"{self.recentFiles[4]}",
-        }}
-               
-        with open(self.filepath, 'w') as file:
+            "recents": {
+                "1": f"{self.recentFiles[0]}",
+                "2": f"{self.recentFiles[1]}",
+                "3": f"{self.recentFiles[2]}",
+                "4": f"{self.recentFiles[3]}",
+                "5": f"{self.recentFiles[4]}",
+            }
+        }
+
+        with open(self.filepath, "w") as file:
             toml.dump(data, file)
 
     def pick_dat_file(self):
-
         logger.info(f"DAT file {self.dat_filename} selected")
 
         # Clear previous plots and histograms
@@ -243,15 +262,20 @@ class MainDataPage:
         self.second_graph_dropdown.update()
 
         # Update the filename label
-        self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
+        self.current_filename_label.text = (
+            f"Current File: {os.path.basename(self.dat_filename)}"
+        )
         self.current_filename_label.update()
 
         # Load the dat file using polars
-        self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)
+        self.dat_file_data = pl.read_csv(
+            self.dat_filename, separator=" ", has_header=True
+        )
 
         # Filter columns to include only ints and floats
         columns = [
-            col for col, dtype in self.dat_file_data.schema.items()
+            col
+            for col, dtype in self.dat_file_data.schema.items()
             if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
         ]
 
@@ -270,15 +294,13 @@ class MainDataPage:
         x_end = x_data.max()
 
         # Store the original range for resetting
-        self.original_min_max = {'min': x_beginning, 'max': x_end}
+        self.original_min_max = {"min": x_beginning, "max": x_end}
 
         # Auto-plot the first column or default to instructions
         if len(columns) > 0:
             self.graph_dropdown.value = columns[0]
             self.graph_dropdown.update()
             self.plot_selected_column()  # Automatically plot the first column`
-
-
 
     def plot_selected_column(self):
         """Plot the selected columns from the .dat file."""
@@ -288,7 +310,6 @@ class MainDataPage:
         x_column = self.x_axis_dropdown.value  # x axis
 
         if self.dat_file_data is not None and y_column_1 in self.dat_file_data.columns:
-
             x_data = self.dat_file_data[x_column].to_numpy()
 
             # Get selected min and max values from the control panel for zooming
@@ -299,40 +320,44 @@ class MainDataPage:
             y_data_2 = None
 
             # Create the first trace for the left y-axis
-            fig = go.Figure(data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis='y1'))
+            fig = go.Figure(
+                data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis="y1")
+            )
 
-            plotTitle = f"Plot of {y_column_1} vs {x_column}" 
+            plotTitle = f"Plot of {y_column_1} vs {x_column}"
 
             # If a second Y-axis column is selected, add it as a second trace
-            if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
+            if (
+                y_column_2 != "Select Graph"
+                and y_column_2 in self.dat_file_data.columns
+            ):
                 y_data_2 = self.dat_file_data[y_column_2].to_numpy()
-                fig.add_trace(go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis='y2'))
-                plotTitle = f"Plot of {y_column_1} and {y_column_2} vs {x_column}" 
-
+                fig.add_trace(
+                    go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis="y2")
+                )
+                plotTitle = f"Plot of {y_column_1} and {y_column_2} vs {x_column}"
 
             # Update layout to add second Y-axis on the right side
             fig.update_layout(
-                template='plotly_dark',
+                template="plotly_dark",
                 title=plotTitle,
                 autosize=True,  # plot auto-resize
                 height=None,  # height determined by the container
-                yaxis=dict(
-                    title=y_column_1,
-                    side="left",
-                    fixedrange=self.boxToggle
-                ),
+                yaxis=dict(title=y_column_1, side="left", fixedrange=self.boxToggle),
                 yaxis2=dict(
                     title=y_column_2,
                     side="right",
                     overlaying="y",  # Overlay on the same x-axis
-                    position=1  # Position the second Y-axis on the right
+                    position=1,  # Position the second Y-axis on the right
                 ),
                 xaxis=dict(
                     title=x_column,
-                    range=[self.zoomMin, self.zoomMax],  # Use zoom range based on the control panel
-                    rangeslider=dict(
-                        visible=True)
-                )
+                    range=[
+                        self.zoomMin,
+                        self.zoomMax,
+                    ],  # Use zoom range based on the control panel
+                    rangeslider=dict(visible=True),
+                ),
             )
 
             # Add vertical line if x position is provided
@@ -351,28 +376,25 @@ class MainDataPage:
                 except ValueError:
                     logger.error("Invalid horizontal line position")
 
-           
-           # Add the range slider
+            # Add the range slider
             # fig.update_layout(xaxis=dict(rangeslider=dict(visible=True)))
-           
-        
+
             # Clear the container before adding the new plot
             self.plot_container.clear()  # Remove previous plot
 
             # Add the new plot
             with self.plot_container:
-                ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
-            
+                ui.plotly(fig).style(
+                    "width: 100%; height: 100%;"
+                )  # Make plot responsive
+
             self.is_graph_rendered = True
 
-            #histogram plot
+            # histogram plot
             self.plot_histogram(y_data_1, y_data_2)
 
             # Update the summary statistics after plotting
             self.update_summary_stats(y_data_1, y_data_2)
-
-
-
 
     def plot_histogram(self, y_data_1=None, y_data_2=None):
         """Plot a histogram based on the two selected Y-axis columns."""
@@ -395,11 +417,15 @@ class MainDataPage:
 
         # Add histogram for the first Y-axis column
         if y_data_1 is not None:
-            fig.add_trace(go.Histogram(x=y_data_1, name=f"Histogram of {y_column_1}", opacity=0.7))
+            fig.add_trace(
+                go.Histogram(x=y_data_1, name=f"Histogram of {y_column_1}", opacity=0.7)
+            )
 
         # Add histogram for the second Y-axis column
         if y_data_2 is not None:
-            fig.add_trace(go.Histogram(x=y_data_2, name=f"Histogram of {y_column_2}", opacity=0.7))
+            fig.add_trace(
+                go.Histogram(x=y_data_2, name=f"Histogram of {y_column_2}", opacity=0.7)
+            )
 
         # Update layout for the histogram
         title_text = f"Histogram of {y_column_1}"
@@ -407,7 +433,7 @@ class MainDataPage:
             title_text += f" and {y_column_2}"
 
         fig.update_layout(
-            template='plotly_dark',
+            template="plotly_dark",
             title=title_text,
             xaxis_title="Y Values",
             yaxis_title="Frequency",
@@ -418,31 +444,29 @@ class MainDataPage:
         # Clear and update the histogram container
         self.histogram_container.clear()
         with self.histogram_container:
-            ui.plotly(fig).style('width: 100%; height: 100%;')
-
+            ui.plotly(fig).style("width: 100%; height: 100%;")
 
     def reset_graph(self):
         """Reset the graph to the original zoom range (full range)."""
         if self.original_min_max:
             # Reset the control panel range to the original min and max
-            self.zoomMin = self.original_min_max['min']
-            self.zoomMax = self.original_min_max['max']
-            
+            self.zoomMin = self.original_min_max["min"]
+            self.zoomMax = self.original_min_max["max"]
+
             # Re-plot the graph with the original range
             self.plot_selected_column()
 
     def update_toggle_box(self):
         self.boxToggle = not self.boxToggle
         if self.boxToggle:
-            self.toggleButton.props('color=dark')
+            self.toggleButton.props("color=dark")
         else:
-            self.toggleButton.props('color=blue-10')
+            self.toggleButton.props("color=blue-10")
         self.plot_selected_column()
-
 
     def update_summary_stats(self, y_data_1, y_data_2):
         """Update the summary statistics for the selected columns."""
-        
+
         self.stats_container.clear()  # Clear any existing stats
 
         y_column_1 = self.graph_dropdown.value
@@ -452,30 +476,36 @@ class MainDataPage:
         if y_data_1 is not None:
             stats_1 = self.compute_stats(y_data_1)
             with self.stats_container:
-                ui.label(f"Summary Stats for {y_column_1}:").classes("text-lg font-semibold")
-                ui.label(f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
-                         f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}")
+                ui.label(f"Summary Stats for {y_column_1}:").classes(
+                    "text-lg font-semibold"
+                )
+                ui.label(
+                    f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
+                    f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}"
+                )
 
         # Compute and display stats for the second Y-axis column, if selected
         if y_data_2 is not None:
             stats_2 = self.compute_stats(y_data_2)
             with self.stats_container:
-                ui.label(f"Summary Stats for {y_column_2}:").classes("text-lg font-semibold")
-                ui.label(f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
-                         f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}")
-
+                ui.label(f"Summary Stats for {y_column_2}:").classes(
+                    "text-lg font-semibold"
+                )
+                ui.label(
+                    f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
+                    f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}"
+                )
 
     @staticmethod
     def compute_stats(data):
         """Compute basic statistics for a given data array."""
         return {
-            'mean': np.mean(data),
-            'median': np.median(data),
-            'std': np.std(data),
-            'min': np.min(data),
-            'max': np.max(data)
+            "mean": np.mean(data),
+            "median": np.median(data),
+            "std": np.std(data),
+            "min": np.min(data),
+            "max": np.max(data),
         }
-
 
     def save_main_plot_as_jpg(self):
         """Save the main plot as a .jpg image."""
@@ -492,28 +522,36 @@ class MainDataPage:
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             x_data = self.dat_file_data[x_column].to_numpy()
 
-            fig = go.Figure(data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis='y1'))
+            fig = go.Figure(
+                data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis="y1")
+            )
 
-            if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
+            if (
+                y_column_2 != "Select Graph"
+                and y_column_2 in self.dat_file_data.columns
+            ):
                 y_data_2 = self.dat_file_data[y_column_2].to_numpy()
-                fig.add_trace(go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis='y2'))
+                fig.add_trace(
+                    go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis="y2")
+                )
 
             # Add layout details
             fig.update_layout(
-                template='plotly_dark',
+                template="plotly_dark",
                 title=f"Plot of {y_column_1} and {y_column_2} vs {x_column}",
                 autosize=True,
                 xaxis=dict(title=x_column),
                 yaxis=dict(title=y_column_1),
                 yaxis2=dict(
                     title=y_column_2,
-                    overlaying='y',
-                    side='right',
-                )
+                    overlaying="y",
+                    side="right",
+                ),
             )
 
             # Generate the filename using a timestamp
             import datetime
+
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"main_plot_{timestamp}.jpg"
 
@@ -526,7 +564,6 @@ class MainDataPage:
         except Exception as ex:
             ui.notify(f"Error saving main plot: {ex}", color="red")
             logger.error(f"Error saving main plot: {ex}")
-
 
     def save_histogram_as_jpg(self):
         """Save the histogram plot as a .jpg image."""
@@ -541,7 +578,10 @@ class MainDataPage:
 
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             y_data_2 = None
-            if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
+            if (
+                y_column_2 != "Select Graph"
+                and y_column_2 in self.dat_file_data.columns
+            ):
                 y_data_2 = self.dat_file_data[y_column_2].to_numpy()
 
             fig = go.Figure()
@@ -554,15 +594,23 @@ class MainDataPage:
 
             # Add histogram for the first Y-axis column
             if y_data_1 is not None:
-                fig.add_trace(go.Histogram(x=y_data_1, name=f"Histogram of {y_column_1}", opacity=0.7))
+                fig.add_trace(
+                    go.Histogram(
+                        x=y_data_1, name=f"Histogram of {y_column_1}", opacity=0.7
+                    )
+                )
 
             # Add histogram for the second Y-axis column
             if y_data_2 is not None:
-                fig.add_trace(go.Histogram(x=y_data_2, name=f"Histogram of {y_column_2}", opacity=0.7))
+                fig.add_trace(
+                    go.Histogram(
+                        x=y_data_2, name=f"Histogram of {y_column_2}", opacity=0.7
+                    )
+                )
 
             # Update layout
             fig.update_layout(
-                template='plotly_dark',
+                template="plotly_dark",
                 title=f"Histogram of {y_column_1} and {y_column_2}",
                 xaxis_title="Y Values",
                 yaxis_title="Frequency",
@@ -571,6 +619,7 @@ class MainDataPage:
 
             # Generate the filename using a timestamp
             import datetime
+
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"histogram_{timestamp}.jpg"
 
@@ -585,24 +634,23 @@ class MainDataPage:
             logger.error(f"Error saving histogram: {ex}")
 
 
-
 def init_gui():
-
     page = MainDataPage()
     page.page_creation()
 
-    #dark mode
+    # dark mode
     dark = ui.dark_mode()
     dark.enable()
 
     app.on_shutdown(shutdown_handler)
 
     # Start the NiceGUI app
-    ui.run(native=True,reload=False)
+    ui.run(native=True, reload=False)
+
 
 def shutdown_handler():
     app.shutdown()
 
+
 if __name__ in {"__main__", "__mp_main__"}:
     init_gui()
-
