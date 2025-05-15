@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from loguru import logger
 from datetime import datetime
 from appdirs import AppDirs
+from pathlib import Path
 import toml
 
 
@@ -45,10 +46,11 @@ class MainDataPage:
 
 
     def page_creation(self):
-        self.dir_loc = AppDirs("DatPlot", "DSL").user_config_dir
+        self.dir_loc = Path(AppDirs("DatPlot", "DSL").user_config_dir)
         self.recents_fileName = 'recent_history.toml'
-        self.filepath = os.path.join(self.dir_loc, self.recents_fileName)
-        os.makedirs(os.path.dirname(self.dir_loc), exist_ok=True)
+        self.filepath = self.dir_loc / Path(self.recents_fileName)
+        self.dir_loc.mkdir(parents=True, exist_ok=True)
+        logger.warning("Creating directory for recents file: " + str(self.dir_loc))
         self.load_recent_files()
 
 
@@ -187,7 +189,7 @@ class MainDataPage:
             ui.notify("Error reading file")
 
 
-    def add_new_file(self):            
+    def add_new_file(self):
 
         if self.dat_filename in self.recentFiles:
             self.recentFiles.remove(self.dat_filename)
@@ -220,7 +222,9 @@ class MainDataPage:
             "4": f"{self.recentFiles[3]}",
             "5": f"{self.recentFiles[4]}",
         }}
-               
+
+
+
         with open(self.filepath, 'w') as file:
             toml.dump(data, file)
 
