@@ -6,6 +6,8 @@ import numpy as np
 import plotly.graph_objects as go
 from loguru import logger
 from datetime import datetime
+from appdirs import AppDirs
+import toml
 
 
 class MainDataPage:
@@ -27,9 +29,29 @@ class MainDataPage:
         self.menu = None # menu for first plot
         self.filter_zeros = None # filter out 0 val for histogram
         self.is_graph_rendered = False  # flag to check if the graph is rendered
+        self.zoomMax = None
+        self.zoomMin = None
+        self.boxToggle = True
+        self.toggleButton = None
+        self.load_file_button = None
+        self.dat_filename = ""
+        self.recent = False
+        self.recent_num = -1
+        self.recentFiles = ['','','','','']
+        self.dir_loc = ""
+        self.recents_fileName = ""
+        self.filepath = ""
+
 
 
     def page_creation(self):
+        self.dir_loc = AppDirs("DatPlot", "DSL").user_config_dir
+        self.recents_fileName = 'recent_history.toml'
+        self.filepath = os.path.join(self.dir_loc, self.recents_fileName)
+        os.makedirs(os.path.dirname(self.dir_loc), exist_ok=True)
+        self.load_recent_files()
+
+
         # Create the main UI elements
         with ui.row(align_items="center").style("width:100%"):
             ui.label("Dat File Plot").classes("text-2xl font-bold mb-2")
@@ -58,51 +80,52 @@ class MainDataPage:
                 on_change=self.plot_selected_column,  # column selection
             )
 
-            ui.button(
-                "Load DAT file", on_click=self.pick_dat_file, icon="folder"
-            )
+
+
+            self.load_file_button = ui.dropdown_button("Load DAT file", on_click=self.get_path, icon="folder", split=True, auto_close=True)
+            self.load_recents()
+
+                
 
         # Add a button to save the current graph as a .jpg
         ui.button("Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save")
-
+        
         # Display current filename heading
         self.current_filename_label = ui.label("No file loaded").classes("text-lg font-semibold mt-2")
+
+       
+        # Add control panel in an expansion panel
+        with ui.expansion().style('background-color:#1f1f1f; border-radius: 10px;') as expansion:
+            with expansion.add_slot('header'):
+                ui.icon("settings").style("color: white; border-radius: 5px; font-size: 30px; ")
+            with ui.row().style('width:100%; display:flex;'):
+
+                # Horizontal layout for the remaining inputs and buttons
+                with ui.row().style('width:100%; display:flex;'):
+
+                    self.toggleButton = ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box).style('flex:1; margin-top:5px;font-size:13px').props('color=dark')
+
+                    # Input for vertical line position
+                    self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change',
+                                                                                            self.plot_selected_column).style('flex:2;')
+                     # Input for horizontal line position
+                    self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change',
+                                                                                                self.plot_selected_column).style('flex:2;')
+
+                    with ui.column():
+                        # Button to reset lines
+                        ui.button("Reset Lines", on_click=self.reset_lines).style('border-radius: 10px;flex:1; font-size:10px').props('color=dark')
+
+                        # Reset button to restore original zoom
+                        ui.button("Reset Zoom", on_click=self.reset_graph).style('flex:1; text-align:center; border-radius: 10px;font-size:10px').props('color=dark')
+
 
         # containers for plot1
         self.plot_container = ui.element('div').style('width: 100%; height: 100vh;')  # Full width, dynamic height
 
-        # Add control panel in an expansion panel
-        with ui.expansion("Control Panel", icon="settings", value=False).style(
-                "background-color: #0e7af3; color: white; border-radius: 5px; padding: 5px;"
-        ):
-            with ui.column().style("padding: 10px;"):
-                # Range slider for zooming
-                self.min_max_range = ui.range(min=0, max=100, value={'min': 20, 'max': 80})
-                self.min_max_range.on('change', self.plot_selected_column)
-
-                # Display selected min and max range
-                self.control_panel = ui.label().bind_text_from(
-                    self.min_max_range, 'value',
-                    backward=lambda v: f'min: {v["min"]}, max: {v["max"]}'
-                )
-
-                # Reset button to restore original zoom
-                ui.button("Reset Zoom", on_click=self.reset_graph)
-
-                # Horizontal layout for the remaining inputs and buttons
-                with ui.row().style("margin-top: 10px;"):
-                    # Input for vertical line position
-                    self.vertical_line_input = ui.input("Vertical Line Position (X)").on('change',
-                                                                                         self.plot_selected_column)
-                    # Input for horizontal line position
-                    self.horizontal_line_input = ui.input("Horizontal Line Position (Y)").on('change',
-                                                                                             self.plot_selected_column)
-
-                    # Button to reset lines
-                    ui.button("Reset Lines", on_click=self.reset_lines)
 
         # Add a separator between the control panel and histogram plot
-        ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
+        ui.separator().style("margin-top: 5px; margin-bottom: 10px;")
 
         # container for histogram plot
         self.histogram_container = ui.element('div').style('width: 100%; height: 100vh;')
@@ -132,88 +155,129 @@ class MainDataPage:
         self.horizontal_line_input.update()
         self.plot_selected_column()  # plot graph without the lines
 
+    def load_recents(self):
+        if self.load_file_button:
+            self.load_file_button.clear()
 
-    async def pick_dat_file(self):
-        # Show a loading progress bar
-        loading_bar = ui.linear_progress(value=0).style("margin-top: 10px;").bind_value_to(
-            lambda: 1  # Sets progress to full when loaded
-        )
+        with self.load_file_button:
+            ui.item(f'{self.recentFiles[0]}', on_click=lambda: self.pick_recent(0))
+            ui.item(f'{self.recentFiles[1]}', on_click=lambda: self.pick_recent(1))
+            ui.item(f'{self.recentFiles[2]}', on_click=lambda: self.pick_recent(2))
+            ui.item(f'{self.recentFiles[3]}', on_click=lambda: self.pick_recent(3))
+            ui.item(f'{self.recentFiles[4]}', on_click=lambda: self.pick_recent(4))
+
+            
+    def pick_recent(self,num):
+        self.recent = True
+        self.dat_filename = self.recentFiles[num]
+        self.add_new_file()
+        self.pick_dat_file()
+        
+    async def get_path(self):
         try:
-            # Show the file dialog
             result = await app.native.main_window.create_file_dialog()
-
-            if not result:
-                # User canceled the dialog
-                ui.notify("No file selected")
-                return  # Exit the function
-
             # If a file was selected
             self.dat_filename = result[0]
-            logger.info(f"DAT file {self.dat_filename} selected")
-
-            # Clear previous plots and histograms
-            self.plot_container.clear()
-            self.histogram_container.clear()
-
-            # Reset dropdowns
-            self.graph_dropdown.value = "Select Graph"
-            self.second_graph_dropdown.value = "Select Graph"
-            self.graph_dropdown.options = []
-            self.second_graph_dropdown.options = []
-            self.graph_dropdown.update()
-            self.second_graph_dropdown.update()
-
-            # Reset control panel
-            self.min_max_range.value = {'min': 0, 'max': 100}
-            self.min_max_range.update()
-
-            # Update the filename label
-            self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
-            self.current_filename_label.update()
-
-            # Load the dat file using polars
-            self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)
-
-            # Filter columns to include only ints and floats
-            columns = [
-                col for col, dtype in self.dat_file_data.schema.items()
-                if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
-            ]
-            logger.info(f"Columns loaded: {columns}")
-
-            # Update dropdown options
-            self.graph_dropdown.options = columns
-            self.second_graph_dropdown.options = columns
-            self.graph_dropdown.update()
-            self.second_graph_dropdown.update()
-
-            # Set the initial min and max range based on the x-axis data
-            x_column = self.x_axis_dropdown.value
-            x_data = self.dat_file_data[x_column].to_numpy()
-            x_beginning = x_data.min()
-            x_end = x_data.max()
-
-            # Store the original range for resetting
-            self.original_min_max = {'min': x_beginning, 'max': x_end}
-
-            # Update control panel range
-            self.min_max_range.min = x_beginning
-            self.min_max_range.max = x_end
-            self.min_max_range.value = {'min': x_beginning, 'max': x_end}
-            self.min_max_range.update()
-
-            # Auto-plot the first column or default to instructions
-            if len(columns) > 0:
-                self.graph_dropdown.value = columns[0]
-                self.graph_dropdown.update()
-                self.plot_selected_column()  # Automatically plot the first column
+            
+            self.add_new_file()
+            self.pick_dat_file()
 
         except Exception as ex:
             logger.error(f"Error reading .dat file: {ex}")
             ui.notify("Error reading file")
-        finally:
-            # Remove the loading bar after the file is loaded / error occurs
-            loading_bar.delete()
+
+
+    def add_new_file(self):            
+
+        if self.dat_filename in self.recentFiles:
+            self.recentFiles.remove(self.dat_filename)
+
+        self.recentFiles.insert(0, self.dat_filename)
+
+        if len(self.recentFiles) > 5:
+            self.recentFiles.pop()
+
+        self.load_recents()
+        self.persist_recent_files()
+
+
+    def load_recent_files(self):
+        if os.path.exists(self.filepath):
+            with open(self.filepath, "r") as file:
+                dataFile = toml.load(file)
+                self.recentFiles[0] = dataFile["recents"]["1"]
+                self.recentFiles[1] = dataFile["recents"]["2"]
+                self.recentFiles[2] = dataFile["recents"]["3"]
+                self.recentFiles[3] = dataFile["recents"]["4"]
+                self.recentFiles[4] = dataFile["recents"]["5"]
+            
+    def persist_recent_files(self):
+        data = {
+        "recents": {
+            "1": f"{self.recentFiles[0]}",
+            "2": f"{self.recentFiles[1]}",
+            "3": f"{self.recentFiles[2]}",
+            "4": f"{self.recentFiles[3]}",
+            "5": f"{self.recentFiles[4]}",
+        }}
+               
+        with open(self.filepath, 'w') as file:
+            toml.dump(data, file)
+
+    def pick_dat_file(self):
+
+        logger.info(f"DAT file {self.dat_filename} selected")
+
+        # Clear previous plots and histograms
+        if self.plot_container:
+            self.plot_container.clear()
+        if self.histogram_container:
+            self.histogram_container.clear()
+
+        # Reset dropdowns
+        self.graph_dropdown.value = "Select Graph"
+        self.second_graph_dropdown.value = "Select Graph"
+        self.graph_dropdown.options = []
+        self.second_graph_dropdown.options = []
+        self.graph_dropdown.update()
+        self.second_graph_dropdown.update()
+
+        # Update the filename label
+        self.current_filename_label.text = f"Current File: {os.path.basename(self.dat_filename)}"
+        self.current_filename_label.update()
+
+        # Load the dat file using polars
+        self.dat_file_data = pl.read_csv(self.dat_filename, separator=" ", has_header=True)
+
+        # Filter columns to include only ints and floats
+        columns = [
+            col for col, dtype in self.dat_file_data.schema.items()
+            if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
+        ]
+
+        logger.info(f"Columns loaded: {columns}")
+
+        # Update dropdown options
+        self.graph_dropdown.options = columns
+        self.second_graph_dropdown.options = columns
+        self.graph_dropdown.update()
+        self.second_graph_dropdown.update()
+
+        # Set the initial min and max range based on the x-axis data
+        x_column = self.x_axis_dropdown.value
+        x_data = self.dat_file_data[x_column].to_numpy()
+        x_beginning = x_data.min()
+        x_end = x_data.max()
+
+        # Store the original range for resetting
+        self.original_min_max = {'min': x_beginning, 'max': x_end}
+
+        # Auto-plot the first column or default to instructions
+        if len(columns) > 0:
+            self.graph_dropdown.value = columns[0]
+            self.graph_dropdown.update()
+            self.plot_selected_column()  # Automatically plot the first column`
+
 
 
     def plot_selected_column(self):
@@ -228,8 +292,8 @@ class MainDataPage:
             x_data = self.dat_file_data[x_column].to_numpy()
 
             # Get selected min and max values from the control panel for zooming
-            zoom_min = self.min_max_range.value['min']
-            zoom_max = self.min_max_range.value['max']
+            # self.zoom_min = self.min_max_range.value['min']
+            # self.zoom_max = self.min_max_range.value['max']
 
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             y_data_2 = None
@@ -237,20 +301,25 @@ class MainDataPage:
             # Create the first trace for the left y-axis
             fig = go.Figure(data=go.Scatter(x=x_data, y=y_data_1, name=y_column_1, yaxis='y1'))
 
+            plotTitle = f"Plot of {y_column_1} vs {x_column}" 
+
             # If a second Y-axis column is selected, add it as a second trace
             if y_column_2 != "Select Graph" and y_column_2 in self.dat_file_data.columns:
                 y_data_2 = self.dat_file_data[y_column_2].to_numpy()
                 fig.add_trace(go.Scatter(x=x_data, y=y_data_2, name=y_column_2, yaxis='y2'))
+                plotTitle = f"Plot of {y_column_1} and {y_column_2} vs {x_column}" 
+
 
             # Update layout to add second Y-axis on the right side
             fig.update_layout(
                 template='plotly_dark',
-                title=f"Plot of {y_column_1} and {y_column_2} vs {x_column}",
+                title=plotTitle,
                 autosize=True,  # plot auto-resize
                 height=None,  # height determined by the container
                 yaxis=dict(
                     title=y_column_1,
-                    side="left"
+                    side="left",
+                    fixedrange=self.boxToggle
                 ),
                 yaxis2=dict(
                     title=y_column_2,
@@ -260,7 +329,9 @@ class MainDataPage:
                 ),
                 xaxis=dict(
                     title=x_column,
-                    range=[zoom_min, zoom_max],  # Use zoom range based on the control panel
+                    range=[self.zoomMin, self.zoomMax],  # Use zoom range based on the control panel
+                    rangeslider=dict(
+                        visible=True)
                 )
             )
 
@@ -280,13 +351,18 @@ class MainDataPage:
                 except ValueError:
                     logger.error("Invalid horizontal line position")
 
+           
+           # Add the range slider
+            # fig.update_layout(xaxis=dict(rangeslider=dict(visible=True)))
+           
+        
             # Clear the container before adding the new plot
             self.plot_container.clear()  # Remove previous plot
 
             # Add the new plot
             with self.plot_container:
                 ui.plotly(fig).style('width: 100%; height: 100%;')  # Make plot responsive
-
+            
             self.is_graph_rendered = True
 
             #histogram plot
@@ -349,11 +425,19 @@ class MainDataPage:
         """Reset the graph to the original zoom range (full range)."""
         if self.original_min_max:
             # Reset the control panel range to the original min and max
-            self.min_max_range.value = self.original_min_max
-            self.min_max_range.update()
-
+            self.zoomMin = self.original_min_max['min']
+            self.zoomMax = self.original_min_max['max']
+            
             # Re-plot the graph with the original range
             self.plot_selected_column()
+
+    def update_toggle_box(self):
+        self.boxToggle = not self.boxToggle
+        if self.boxToggle:
+            self.toggleButton.props('color=dark')
+        else:
+            self.toggleButton.props('color=blue-10')
+        self.plot_selected_column()
 
 
     def update_summary_stats(self, y_data_1, y_data_2):
@@ -501,7 +585,9 @@ class MainDataPage:
             logger.error(f"Error saving histogram: {ex}")
 
 
+
 def init_gui():
+
     page = MainDataPage()
     page.page_creation()
 
@@ -509,9 +595,13 @@ def init_gui():
     dark = ui.dark_mode()
     dark.enable()
 
-    # Start the NiceGUI app
-    ui.run(native=True)
+    app.on_shutdown(shutdown_handler)
 
+    # Start the NiceGUI app
+    ui.run(native=True,reload=False)
+
+def shutdown_handler():
+    app.shutdown()
 
 if __name__ in {"__main__", "__mp_main__"}:
     init_gui()
