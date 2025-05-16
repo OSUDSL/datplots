@@ -20,6 +20,12 @@ dependencies = [
     "toml"
 ]
 
+[project.scripts]
+datplot = "datPlot:init_gui"
+
+[tool.uv]
+package = true
+
 [tool.rye]
 managed = true
 dev-dependencies = ["ptpython"]

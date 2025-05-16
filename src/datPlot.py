@@ -11,6 +11,12 @@ import toml
 from pathlib import Path
 
 
+# Config file dict for recent files
+# Dict for Gui elements
+# Dict for gui binding elements
+# Do gui binding
+# 
+
 class MainDataPage:
     def __init__(self) -> None:
         """The page is created as soon as the class is instantiated."""

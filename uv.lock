@@ -244,7 +244,7 @@ wheels = [
 [[package]]
 name = "datplot"
 version = "2024.0.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "appdirs" },
     { name = "icecream" },
