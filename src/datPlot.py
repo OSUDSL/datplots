@@ -20,41 +20,43 @@ from pathlib import Path
 class MainDataPage:
     def __init__(self) -> None:
         """The page is created as soon as the class is instantiated."""
-        self.main_layout = None
-        self.graph_dropdown = None  # first dropdown for y-axis
-        self.second_graph_dropdown = None  # second dropdown for y-axis
-        self.x_axis_dropdown = None  # dropdown for x axis
         self.dat_file_data = None  # store dat file data
-        self.plot_container = None  # container for the plot
-        self.min_max_range = None  # store min and max x values
-        self.control_panel = None  # control panel to change x axis
-        self.reset = None  # reset button for control panel
         self.original_min_max = None  # store the original full range for resetting
-        self.vertical_line_input = None  # input for vertical line position
-        self.horizontal_line_input = None  # input for horizontal line position
-        self.histogram_container = None  # container for the histogram
-        self.menu = None  # menu for first plot
         self.filter_zeros = None  # filter out 0 val for histogram
         self.is_graph_rendered = False  # flag to check if the graph is rendered
         self.zoomMax = None
         self.zoomMin = None
         self.boxToggle = True
-        self.toggleButton = None
-        self.load_file_button = None
         self.dat_filename = ""
-        self.recent = False
-        self.recent_num = -1
-        self.recentFiles = ["", "", "", "", ""]
-        self.dir_loc = ""
-        self.recents_fileName = ""
-        self.filepath = ""
+
+        self.config = {
+            "recent files": {
+                "recents": ["","","","",""],
+                "filename": "",
+                "directory": "",
+                "path": None
+            }
+        }
+
+        self.gui_components = {
+            "graph_dropdown": None,
+            "second_graph_dropdown": None,
+            "x_axis_dropdown": None,
+            "plot_container": None,
+            "vertical_line_input": None,
+            "horizontal_line_input": None,
+            "histogram_container": None,
+            "toggleButton": None,
+            "load_file_button": None
+        }
+
 
     def page_creation(self):
-        self.dir_loc = Path(AppDirs("DatPlot", "DSL").user_config_dir)
-        self.recents_fileName = "recent_history.toml"
-        self.filepath = self.dir_loc / Path(self.recents_fileName)
-        self.dir_loc.mkdir(parents=True, exist_ok=True)
-        logger.warning("Creating directory for recents file: " + str(self.dir_loc))
+        self.config['recent files']['directory'] = Path(AppDirs("DatPlot", "DSL").user_config_dir)
+        self.config['recent files']['filename'] = "recent_history.toml"
+        #self.filepath = self.dir_loc / Path(self.recents_fileName)
+        self.config['recent files']['directory'].mkdir(parents=True, exist_ok=True)
+        self.config['recent files']['path'] = self.config['recent files']['directory'] / self.config['recent files']['filename']
         self.load_recent_files()
 
         # Create the main UI elements
@@ -63,14 +65,14 @@ class MainDataPage:
             ui.space()
 
             # Dropdown for x-axis selection (SimTime / DatTime)
-            self.x_axis_dropdown = ui.select(
+            self.gui_components["x_axis_dropdown"] = ui.select(
                 ["SimTime", "DatTime"],
                 value="SimTime",  # Defaults to SimTime
                 label="Select X-axis",
             )
 
             # Dropdown for y-axis (column) selection
-            self.graph_dropdown = ui.select(
+            self.gui_components["graph_dropdown"] = ui.select(
                 ["Select Graph"],
                 value="Select Graph",
                 label="Select Y-axis 1",
@@ -78,14 +80,14 @@ class MainDataPage:
             )
 
             # Dropdown for second Y-axis (column) selection
-            self.second_graph_dropdown = ui.select(
+            self.gui_components["second_graph_dropdown"] = ui.select(
                 ["Select Graph"],
                 value="Select Graph",
                 label="Select Y-axis 2 (optional)",
                 on_change=self.plot_selected_column,  # column selection
             )
 
-            self.load_file_button = ui.dropdown_button(
+            self.gui_components["load_file_button"] = ui.dropdown_button(
                 "Load DAT file",
                 on_click=self.get_path,
                 icon="folder",
@@ -115,20 +117,20 @@ class MainDataPage:
             with ui.row().style("width:100%; display:flex;"):
                 # Horizontal layout for the remaining inputs and buttons
                 with ui.row().style("width:100%; display:flex;"):
-                    self.toggleButton = (
+                    self.gui_components["toggleButton"] = (
                         ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box)
                         .style("flex:1; margin-top:5px;font-size:13px")
                         .props("color=dark")
                     )
 
                     # Input for vertical line position
-                    self.vertical_line_input = (
+                    self.gui_components["vertical_line_input"] = (
                         ui.input("Vertical Line Position (X)")
                         .on("change", self.plot_selected_column)
                         .style("flex:2;")
                     )
                     # Input for horizontal line position
-                    self.horizontal_line_input = (
+                    self.gui_components["horizontal_line_input"] = (
                         ui.input("Horizontal Line Position (Y)")
                         .on("change", self.plot_selected_column)
                         .style("flex:2;")
@@ -146,7 +148,7 @@ class MainDataPage:
                         ).props("color=dark")
 
         # containers for plot1
-        self.plot_container = ui.element("div").style(
+        self.gui_components["plot_container"] = ui.element("div").style(
             "width: 100%; height: 100vh;"
         )  # Full width, dynamic height
 
@@ -154,7 +156,7 @@ class MainDataPage:
         ui.separator().style("margin-top: 5px; margin-bottom: 10px;")
 
         # container for histogram plot
-        self.histogram_container = ui.element("div").style(
+        self.gui_components["histogram_container"] = ui.element("div").style(
             "width: 100%; height: 100vh;"
         )
 
@@ -178,26 +180,25 @@ class MainDataPage:
 
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
-        self.vertical_line_input.value = ""  # Clear the vertical line input
-        self.horizontal_line_input.value = ""  # Clear the horizontal line input
-        self.vertical_line_input.update()
-        self.horizontal_line_input.update()
+        self.gui_components["vertical_line_input"].value = ""  # Clear the vertical line input
+        self.gui_components["horizontal_line_input"].value = ""  # Clear the horizontal line input
+        self.gui_components["vertical_line_input"].update()
+        self.gui_components["horizontal_line_input"].update()
         self.plot_selected_column()  # plot graph without the lines
 
     def load_recents(self):
-        if self.load_file_button:
-            self.load_file_button.clear()
+        if self.gui_components["load_file_button"]:
+            self.gui_components["load_file_button"].clear()
 
-        with self.load_file_button:
-            ui.item(f"{self.recentFiles[0]}", on_click=lambda: self.pick_recent(0))
-            ui.item(f"{self.recentFiles[1]}", on_click=lambda: self.pick_recent(1))
-            ui.item(f"{self.recentFiles[2]}", on_click=lambda: self.pick_recent(2))
-            ui.item(f"{self.recentFiles[3]}", on_click=lambda: self.pick_recent(3))
-            ui.item(f"{self.recentFiles[4]}", on_click=lambda: self.pick_recent(4))
+        with self.gui_components["load_file_button"]:
+            ui.item(f"{self.config['recent files']['recents'][0]}", on_click=lambda: self.pick_recent(0))
+            ui.item(f"{self.config['recent files']['recents'][1]}", on_click=lambda: self.pick_recent(1))
+            ui.item(f"{self.config['recent files']['recents'][2]}", on_click=lambda: self.pick_recent(2))
+            ui.item(f"{self.config['recent files']['recents'][3]}", on_click=lambda: self.pick_recent(3))
+            ui.item(f"{self.config['recent files']['recents'][4]}", on_click=lambda: self.pick_recent(4))
 
     def pick_recent(self, num):
-        self.recent = True
-        self.dat_filename = self.recentFiles[num]
+        self.dat_filename = self.config['recent files']['recents'][num]
         self.add_new_file()
         self.pick_dat_file()
 
@@ -215,57 +216,44 @@ class MainDataPage:
             ui.notify("Error reading file")
 
     def add_new_file(self):
-        if self.dat_filename in self.recentFiles:
-            self.recentFiles.remove(self.dat_filename)
+        if self.dat_filename in self.config['recent files']['recents']:
+           self.config['recent files']['recents'].remove(self.dat_filename)
 
-        self.recentFiles.insert(0, self.dat_filename)
+        self.config['recent files']['recents'].insert(0, self.dat_filename)
 
-        if len(self.recentFiles) > 5:
-            self.recentFiles.pop()
+        if len(self.config['recent files']['recents']) > 5:
+            self.config['recent files']['recents'].pop()
 
         self.load_recents()
         self.persist_recent_files()
 
     def load_recent_files(self):
-        if os.path.exists(self.filepath):
-            with open(self.filepath, "r") as file:
+        if self.config['recent files']['path'].exists():
+            print(self.config['recent files']['path'])
+            with open(self.config['recent files']['path'], "r") as file:
                 dataFile = toml.load(file)
-                self.recentFiles[0] = dataFile["recents"]["1"]
-                self.recentFiles[1] = dataFile["recents"]["2"]
-                self.recentFiles[2] = dataFile["recents"]["3"]
-                self.recentFiles[3] = dataFile["recents"]["4"]
-                self.recentFiles[4] = dataFile["recents"]["5"]
+                self.config['recent files']['recents'] = dataFile['recent files']['recents']
 
     def persist_recent_files(self):
-        data = {
-            "recents": {
-                "1": f"{self.recentFiles[0]}",
-                "2": f"{self.recentFiles[1]}",
-                "3": f"{self.recentFiles[2]}",
-                "4": f"{self.recentFiles[3]}",
-                "5": f"{self.recentFiles[4]}",
-            }
-        }
-
-        with open(self.filepath, "w") as file:
-            toml.dump(data, file)
+        with open(self.config['recent files']['path'], "w") as file:
+            toml.dump(self.config, file)
 
     def pick_dat_file(self):
         logger.info(f"DAT file {self.dat_filename} selected")
 
         # Clear previous plots and histograms
-        if self.plot_container:
-            self.plot_container.clear()
-        if self.histogram_container:
-            self.histogram_container.clear()
+        if self.gui_components["plot_container"]:
+            self.gui_components["plot_container"].clear()
+        if self.gui_components["histogram_container"]:
+            self.gui_components["histogram_container"].clear()
 
         # Reset dropdowns
-        self.graph_dropdown.value = "Select Graph"
-        self.second_graph_dropdown.value = "Select Graph"
-        self.graph_dropdown.options = []
-        self.second_graph_dropdown.options = []
-        self.graph_dropdown.update()
-        self.second_graph_dropdown.update()
+        self.gui_components["graph_dropdown"].value = "Select Graph"
+        self.gui_components["second_graph_dropdown"].value = "Select Graph"
+        self.gui_components["graph_dropdown"].options = []
+        self.gui_components["second_graph_dropdown"].options = []
+        self.gui_components["graph_dropdown"].update()
+        self.gui_components["second_graph_dropdown"].update()
 
         # Update the filename label
         self.current_filename_label.text = (
@@ -288,13 +276,13 @@ class MainDataPage:
         logger.info(f"Columns loaded: {columns}")
 
         # Update dropdown options
-        self.graph_dropdown.options = columns
-        self.second_graph_dropdown.options = columns
-        self.graph_dropdown.update()
-        self.second_graph_dropdown.update()
+        self.gui_components["graph_dropdown"].options = columns
+        self.gui_components["second_graph_dropdown"].options = columns
+        self.gui_components["graph_dropdown"].update()
+        self.gui_components["second_graph_dropdown"].update()
 
         # Set the initial min and max range based on the x-axis data
-        x_column = self.x_axis_dropdown.value
+        x_column = self.gui_components["x_axis_dropdown"].value
         x_data = self.dat_file_data[x_column].to_numpy()
         x_beginning = x_data.min()
         x_end = x_data.max()
@@ -304,23 +292,19 @@ class MainDataPage:
 
         # Auto-plot the first column or default to instructions
         if len(columns) > 0:
-            self.graph_dropdown.value = columns[0]
-            self.graph_dropdown.update()
+            self.gui_components["graph_dropdown"].value = columns[0]
+            self.gui_components["graph_dropdown"].update()
             self.plot_selected_column()  # Automatically plot the first column`
 
     def plot_selected_column(self):
         """Plot the selected columns from the .dat file."""
 
-        y_column_1 = self.graph_dropdown.value  # First y-axis column
-        y_column_2 = self.second_graph_dropdown.value  # Second y-axis column
-        x_column = self.x_axis_dropdown.value  # x axis
+        y_column_1 = self.gui_components["graph_dropdown"].value  # First y-axis column
+        y_column_2 = self.gui_components["second_graph_dropdown"].value  # Second y-axis column
+        x_column = self.gui_components["x_axis_dropdown"].value  # x axis
 
         if self.dat_file_data is not None and y_column_1 in self.dat_file_data.columns:
             x_data = self.dat_file_data[x_column].to_numpy()
-
-            # Get selected min and max values from the control panel for zooming
-            # self.zoom_min = self.min_max_range.value['min']
-            # self.zoom_max = self.min_max_range.value['max']
 
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             y_data_2 = None
@@ -367,17 +351,17 @@ class MainDataPage:
             )
 
             # Add vertical line if x position is provided
-            if self.vertical_line_input.value:
+            if self.gui_components["vertical_line_input"].value:
                 try:
-                    x_position = float(self.vertical_line_input.value)
+                    x_position = float(self.gui_components["vertical_line_input"].value)
                     fig.add_vline(x=x_position, line_dash="dash", line_color="green")
                 except ValueError:
                     logger.error("Invalid vertical line position")
 
             # Add horizontal line if y position is provided
-            if self.horizontal_line_input.value:
+            if self.gui_components["horizontal_line_input"].value:
                 try:
-                    y_position = float(self.horizontal_line_input.value)
+                    y_position = float(self.gui_components["horizontal_line_input"].value)
                     fig.add_hline(y=y_position, line_dash="dash", line_color="yellow")
                 except ValueError:
                     logger.error("Invalid horizontal line position")
@@ -386,10 +370,10 @@ class MainDataPage:
             # fig.update_layout(xaxis=dict(rangeslider=dict(visible=True)))
 
             # Clear the container before adding the new plot
-            self.plot_container.clear()  # Remove previous plot
+            self.gui_components["plot_container"].clear()  # Remove previous plot
 
             # Add the new plot
-            with self.plot_container:
+            with self.gui_components["plot_container"]:
                 ui.plotly(fig).style(
                     "width: 100%; height: 100%;"
                 )  # Make plot responsive
@@ -406,8 +390,8 @@ class MainDataPage:
         """Plot a histogram based on the two selected Y-axis columns."""
         fig = go.Figure()
 
-        y_column_1 = self.graph_dropdown.value
-        y_column_2 = self.second_graph_dropdown.value
+        y_column_1 = self.gui_components["graph_dropdown"].value
+        y_column_2 = self.gui_components["second_graph_dropdown"].value
 
         if y_data_1 is None or y_data_2 is None:
             if y_column_1 in self.dat_file_data.columns:
@@ -448,8 +432,8 @@ class MainDataPage:
         )
 
         # Clear and update the histogram container
-        self.histogram_container.clear()
-        with self.histogram_container:
+        self.gui_components["histogram_container"].clear()
+        with self.gui_components["histogram_container"]:
             ui.plotly(fig).style("width: 100%; height: 100%;")
 
     def reset_graph(self):
@@ -465,9 +449,9 @@ class MainDataPage:
     def update_toggle_box(self):
         self.boxToggle = not self.boxToggle
         if self.boxToggle:
-            self.toggleButton.props("color=dark")
+            self.gui_components["toggleButton"].props("color=dark")
         else:
-            self.toggleButton.props("color=blue-10")
+            self.gui_components["toggleButton"].props("color=blue-10")
         self.plot_selected_column()
 
     def update_summary_stats(self, y_data_1, y_data_2):
@@ -475,8 +459,8 @@ class MainDataPage:
 
         self.stats_container.clear()  # Clear any existing stats
 
-        y_column_1 = self.graph_dropdown.value
-        y_column_2 = self.second_graph_dropdown.value
+        y_column_1 = self.gui_components["graph_dropdown"].value
+        y_column_2 = self.gui_components["second_graph_dropdown"].value
 
         # Compute and display stats for the first Y-axis column
         if y_data_1 is not None:
@@ -521,9 +505,9 @@ class MainDataPage:
 
         try:
             # Retrieve the main plot data
-            y_column_1 = self.graph_dropdown.value
-            y_column_2 = self.second_graph_dropdown.value
-            x_column = self.x_axis_dropdown.value
+            y_column_1 = self.gui_components["graph_dropdown"].value
+            y_column_2 = self.gui_components["second_graph_dropdown"].value
+            x_column = self.gui_components["x_axis_dropdown"].value
 
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             x_data = self.dat_file_data[x_column].to_numpy()
@@ -579,8 +563,8 @@ class MainDataPage:
 
         try:
             # Retrieve histogram data
-            y_column_1 = self.graph_dropdown.value
-            y_column_2 = self.second_graph_dropdown.value
+            y_column_1 = self.gui_components["graph_dropdown"].value
+            y_column_2 = self.gui_components["second_graph_dropdown"].value
 
             y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             y_data_2 = None
