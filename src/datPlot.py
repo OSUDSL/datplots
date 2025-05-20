@@ -15,7 +15,7 @@ from pathlib import Path
 # Dict for Gui elements
 # Dict for gui binding elements
 # Do gui binding
-# 
+# change app title and icon on popup window
 
 class MainDataPage:
     def __init__(self) -> None:
@@ -23,12 +23,7 @@ class MainDataPage:
         self.dat_file_data = None  # store dat file data
         self.original_min_max = None  # store the original full range for resetting
         self.filter_zeros = None  # filter out 0 val for histogram
-        self.is_graph_rendered = False  # flag to check if the graph is rendered
-        self.zoomMax = None
-        self.zoomMin = None
-        self.boxToggle = True
-        self.dat_filename = ""
-
+      
         self.config = {
             "recent files": {
                 "recents": ["","","","",""],
@@ -50,11 +45,17 @@ class MainDataPage:
             "load_file_button": None
         }
 
+        self.bindings = {
+            "current file": "No file loaded",
+            "box zoom": True,
+            "zoom": [0,0],
+            "graph rendered": False,
+        }
+
 
     def page_creation(self):
         self.config['recent files']['directory'] = Path(AppDirs("DatPlot", "DSL").user_config_dir)
         self.config['recent files']['filename'] = "recent_history.toml"
-        #self.filepath = self.dir_loc / Path(self.recents_fileName)
         self.config['recent files']['directory'].mkdir(parents=True, exist_ok=True)
         self.config['recent files']['path'] = self.config['recent files']['directory'] / self.config['recent files']['filename']
         self.load_recent_files()
@@ -97,14 +98,10 @@ class MainDataPage:
             self.load_recents()
 
         # Add a button to save the current graph as a .jpg
-        ui.button(
-            "Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save"
-        )
+        ui.button("Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save")
 
         # Display current filename heading
-        self.current_filename_label = ui.label("No file loaded").classes(
-            "text-lg font-semibold mt-2"
-        )
+        ui.label().classes("text-lg font-semibold mt-2").bind_text_from(self.bindings, os.path.basename('current file'), backward=lambda n: f'{n}')
 
         # Add control panel in an expansion panel
         with ui.expansion().style(
@@ -113,7 +110,7 @@ class MainDataPage:
             with expansion.add_slot("header"):
                 ui.icon("settings").style(
                     "color: white; border-radius: 5px; font-size: 30px; "
-                )
+                )   
             with ui.row().style("width:100%; display:flex;"):
                 # Horizontal layout for the remaining inputs and buttons
                 with ui.row().style("width:100%; display:flex;"):
@@ -198,15 +195,16 @@ class MainDataPage:
             ui.item(f"{self.config['recent files']['recents'][4]}", on_click=lambda: self.pick_recent(4))
 
     def pick_recent(self, num):
-        self.dat_filename = self.config['recent files']['recents'][num]
+        self.bindings["current file"] = self.config['recent files']['recents'][num]
         self.add_new_file()
         self.pick_dat_file()
 
     async def get_path(self):
         try:
             result = await app.native.main_window.create_file_dialog()
+            
             # If a file was selected
-            self.dat_filename = result[0]
+            self.bindings["current file"] = result[0]
 
             self.add_new_file()
             self.pick_dat_file()
@@ -216,10 +214,10 @@ class MainDataPage:
             ui.notify("Error reading file")
 
     def add_new_file(self):
-        if self.dat_filename in self.config['recent files']['recents']:
-           self.config['recent files']['recents'].remove(self.dat_filename)
+        if self.bindings["current file"] in self.config['recent files']['recents']:
+           self.config['recent files']['recents'].remove(self.bindings["current file"])
 
-        self.config['recent files']['recents'].insert(0, self.dat_filename)
+        self.config['recent files']['recents'].insert(0, self.bindings["current file"])
 
         if len(self.config['recent files']['recents']) > 5:
             self.config['recent files']['recents'].pop()
@@ -229,7 +227,6 @@ class MainDataPage:
 
     def load_recent_files(self):
         if self.config['recent files']['path'].exists():
-            print(self.config['recent files']['path'])
             with open(self.config['recent files']['path'], "r") as file:
                 dataFile = toml.load(file)
                 self.config['recent files']['recents'] = dataFile['recent files']['recents']
@@ -239,7 +236,7 @@ class MainDataPage:
             toml.dump(self.config, file)
 
     def pick_dat_file(self):
-        logger.info(f"DAT file {self.dat_filename} selected")
+        logger.info(f"DAT file {self.bindings["current file"]} selected")
 
         # Clear previous plots and histograms
         if self.gui_components["plot_container"]:
@@ -255,15 +252,9 @@ class MainDataPage:
         self.gui_components["graph_dropdown"].update()
         self.gui_components["second_graph_dropdown"].update()
 
-        # Update the filename label
-        self.current_filename_label.text = (
-            f"Current File: {os.path.basename(self.dat_filename)}"
-        )
-        self.current_filename_label.update()
-
         # Load the dat file using polars
         self.dat_file_data = pl.read_csv(
-            self.dat_filename, separator=" ", has_header=True
+            self.bindings["current file"], separator=" ", has_header=True
         )
 
         # Filter columns to include only ints and floats
@@ -289,6 +280,9 @@ class MainDataPage:
 
         # Store the original range for resetting
         self.original_min_max = {"min": x_beginning, "max": x_end}
+
+        self.bindings['zoom'][0] = self.original_min_max["min"]
+        self.bindings['zoom'][1] = self.original_min_max["max"]
 
         # Auto-plot the first column or default to instructions
         if len(columns) > 0:
@@ -333,7 +327,7 @@ class MainDataPage:
                 title=plotTitle,
                 autosize=True,  # plot auto-resize
                 height=None,  # height determined by the container
-                yaxis=dict(title=y_column_1, side="left", fixedrange=self.boxToggle),
+                yaxis=dict(title=y_column_1, side="left", fixedrange=self.bindings['box zoom']),
                 yaxis2=dict(
                     title=y_column_2,
                     side="right",
@@ -343,8 +337,8 @@ class MainDataPage:
                 xaxis=dict(
                     title=x_column,
                     range=[
-                        self.zoomMin,
-                        self.zoomMax,
+                        self.bindings['zoom'][0],
+                        self.bindings['zoom'][1],
                     ],  # Use zoom range based on the control panel
                     rangeslider=dict(visible=True),
                 ),
@@ -366,9 +360,6 @@ class MainDataPage:
                 except ValueError:
                     logger.error("Invalid horizontal line position")
 
-            # Add the range slider
-            # fig.update_layout(xaxis=dict(rangeslider=dict(visible=True)))
-
             # Clear the container before adding the new plot
             self.gui_components["plot_container"].clear()  # Remove previous plot
 
@@ -378,7 +369,7 @@ class MainDataPage:
                     "width: 100%; height: 100%;"
                 )  # Make plot responsive
 
-            self.is_graph_rendered = True
+            self.bindings['graph rendered'] = True
 
             # histogram plot
             self.plot_histogram(y_data_1, y_data_2)
@@ -440,18 +431,17 @@ class MainDataPage:
         """Reset the graph to the original zoom range (full range)."""
         if self.original_min_max:
             # Reset the control panel range to the original min and max
-            self.zoomMin = self.original_min_max["min"]
-            self.zoomMax = self.original_min_max["max"]
+            self.bindings['zoom'][0] = self.original_min_max["min"]
+            self.bindings['zoom'][1] = self.original_min_max["max"]
 
             # Re-plot the graph with the original range
             self.plot_selected_column()
 
     def update_toggle_box(self):
-        self.boxToggle = not self.boxToggle
-        if self.boxToggle:
-            self.gui_components["toggleButton"].props("color=dark")
-        else:
-            self.gui_components["toggleButton"].props("color=blue-10")
+        self.gui_components["toggleButton"].props(f'color={"blue-10" if self.bindings['box zoom'] else "dark"}')
+
+        self.bindings['box zoom'] = not self.bindings['box zoom']
+        #self.gui_components["toggleButton"].props(f'color={"dark" if self.bindings['box zoom'] else "blue-10"}')
         self.plot_selected_column()
 
     def update_summary_stats(self, y_data_1, y_data_2):
@@ -499,7 +489,7 @@ class MainDataPage:
 
     def save_main_plot_as_jpg(self):
         """Save the main plot as a .jpg image."""
-        if self.dat_file_data is None or not self.is_graph_rendered:
+        if self.dat_file_data is None or not self.bindings['graph rendered']:
             ui.notify("No main plot to save!", color="red")
             return
 
@@ -557,7 +547,7 @@ class MainDataPage:
 
     def save_histogram_as_jpg(self):
         """Save the histogram plot as a .jpg image."""
-        if self.dat_file_data is None or not self.is_graph_rendered:
+        if self.dat_file_data is None or not self.bindings['graph rendered']:
             ui.notify("No histogram to save!", color="red")
             return
 
@@ -633,9 +623,11 @@ def init_gui():
     dark.enable()
 
     app.on_shutdown(shutdown_handler)
+    
+    favicon=str(Path(__file__).parent / 'favicon.ico')
 
     # Start the NiceGUI app
-    ui.run(native=True, reload=False)
+    ui.run(native=True, reload=False, title="DatPlot", favicon=favicon)
 
 
 def shutdown_handler():
