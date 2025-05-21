@@ -10,12 +10,12 @@ from appdirs import AppDirs
 import toml
 from pathlib import Path
 
+import webview
 
-# Config file dict for recent files
-# Dict for Gui elements
-# Dict for gui binding elements
-# Do gui binding
-# change app title and icon on popup window
+
+# Change top layout
+# Add save location option
+# Add empty graph placeholder for no file loaded
 
 
 class MainDataPage:
@@ -40,6 +40,7 @@ class MainDataPage:
             "histogram_container": None,
             "toggleButton": None,
             "load_file_button": None,
+            "saved file": ""
         }
 
         self.bindings = {
@@ -54,16 +55,43 @@ class MainDataPage:
         self.load_config_file()
 
         # Create the main UI elements
-        with ui.row(align_items="center").style("width:100%"):
-            ui.label("Dat File Plot").classes("text-2xl font-bold mb-2")
-            ui.space()
+        with ui.row(align_items="center").style("width:100%; display: flex;"):
+            ui.icon("o_toys").style('font-size: 50px; flex:1;').tooltip('kachow!')
+
+            with ui.row().style('border-radius: 20px;flex:1'):
+                # Main button with tooltip
+                with ui.button(icon='folder', on_click=self.get_path).style('width:60%'):
+                    ui.tooltip('Load DAT File').classes('bg-blue')
+
+                # Dropdown arrow
+                menu_dropdown = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%')
+
+                self.gui_components["load_file_button"] = ui.menu().bind_value(menu_dropdown).props('auto-close')
+                
+
+        
+
+            with ui.row().style('border-radius: 20px; flex:1'):
+                # Main button with tooltip
+                with ui.button(icon='save', on_click=self.save_main_plot_as_jpg).style('width:60%'):
+                    ui.tooltip('Save as JPEG').classes('bg-green')
+
+                # Dropdown arrow
+                menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%')
+
+                
+                with ui.menu().props('auto-close').bind_value(menu_button):
+                    self.gui_components["saved file"] =  ui.row(align_items="center")
+                    with self.gui_components["saved file"]:
+                        ui.menu_item(f"{self.config["save plots"]["path"]}")
+                        ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center')
 
             # Dropdown for x-axis selection (SimTime / DatTime)
             self.gui_components["x_axis_dropdown"] = ui.select(
                 ["SimTime", "DatTime"],
                 value="SimTime",  # Defaults to SimTime
                 label="Select X-axis",
-            )
+            ).style('flex:2;')
 
             # Dropdown for y-axis (column) selection
             self.gui_components["graph_dropdown"] = ui.select(
@@ -71,7 +99,7 @@ class MainDataPage:
                 value="Select Graph",
                 label="Select Y-axis 1",
                 on_change=self.plot_selected_column,  # column selection
-            )
+            ).style('flex:2;')
 
             # Dropdown for second Y-axis (column) selection
             self.gui_components["second_graph_dropdown"] = ui.select(
@@ -79,25 +107,13 @@ class MainDataPage:
                 value="Select Graph",
                 label="Select Y-axis 2 (optional)",
                 on_change=self.plot_selected_column,  # column selection
-            )
+            ).style('flex:2;')
 
-            self.gui_components["load_file_button"] = ui.dropdown_button(
-                "Load DAT file",
-                on_click=self.get_path,
-                icon="folder",
-                split=True,
-                auto_close=True,
-            )
             self.load_recents()
-
-        # Add a button to save the current graph as a .jpg
-        ui.button(
-            "Save Main Plot as JPG", on_click=self.save_main_plot_as_jpg, icon="save"
-        )
 
         # Display current filename heading
         ui.label().classes("text-lg font-semibold mt-2").bind_text_from(
-            self.bindings, os.path.basename("current file"), backward=lambda n: f"{n}"
+            self.bindings, "current file", backward=lambda n: f"{Path(n).name}"
         )
 
         # Add control panel in an expansion panel
@@ -184,28 +200,45 @@ class MainDataPage:
         self.gui_components["horizontal_line_input"].update()
         self.plot_selected_column()  # plot graph without the lines
 
+    async def get_save_path(self):
+        try:
+            location = await app.native.main_window.create_file_dialog(allow_multiple=False, dialog_type=webview.FOLDER_DIALOG)
+            if location is not None:
+                self.config['save plots']['path'] = location[0]
+            
+                self.gui_components["saved file"].clear()
+
+                with self.gui_components["saved file"]:
+                    ui.menu_item(f"{self.config["save plots"]["path"]}")
+                    ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center')
+
+           
+        except Exception as ex:
+            logger.opt(exception=True).error(f"Error reading .dat file.")
+            ui.notify("Error reading file")
+
     def load_recents(self):
         if self.gui_components["load_file_button"]:
             self.gui_components["load_file_button"].clear()
 
         with self.gui_components["load_file_button"]:
-            ui.item(
+            ui.menu_item(
                 f"{self.config['recent files']['recents'][0]}",
                 on_click=lambda: self.pick_recent(0),
             )
-            ui.item(
+            ui.menu_item(
                 f"{self.config['recent files']['recents'][1]}",
                 on_click=lambda: self.pick_recent(1),
             )
-            ui.item(
+            ui.menu_item(
                 f"{self.config['recent files']['recents'][2]}",
                 on_click=lambda: self.pick_recent(2),
             )
-            ui.item(
+            ui.menu_item(
                 f"{self.config['recent files']['recents'][3]}",
                 on_click=lambda: self.pick_recent(3),
             )
-            ui.item(
+            ui.menu_item(
                 f"{self.config['recent files']['recents'][4]}",
                 on_click=lambda: self.pick_recent(4),
             )
@@ -554,9 +587,10 @@ class MainDataPage:
 
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"main_plot_{timestamp}.jpg"
-
+            path = self.config['save plots']['path']
+            save_location = Path(path) / Path(filename)
             # Save the figure as a .jpg
-            fig.write_image(filename, format="jpg")
+            fig.write_image(save_location, format="jpg")
 
             ui.notify(f"Main plot saved as {filename}", color="green")
             logger.info(f"Main plot saved as {filename}")
@@ -640,6 +674,9 @@ class MainDataPage:
             self.config = {
                 "recent files": {
                     "recents": ["", "", "", "", ""]
+                },
+                "save plots" : {
+                    "path" : ""
                 }
             }
             with open(self.config_filepath, "w") as f:
