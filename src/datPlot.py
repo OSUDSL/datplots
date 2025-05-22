@@ -285,11 +285,10 @@ class MainDataPage:
             result = await app.native.main_window.create_file_dialog()
 
             # If a file was selected
-            self.bindings["current file"] = result[0]
-            self.bindings["current file"] = result[0]
-
-            self.add_new_file()
-            self.pick_dat_file()
+            if result:
+                self.bindings["current file"] = result[0]
+                self.add_new_file()
+                self.pick_dat_file()
 
         except Exception as ex:
             logger.opt(exception=True).error(f"Error reading .dat file.")
@@ -702,8 +701,7 @@ class MainDataPage:
     def load_config_file(self):
         """Load user config from TOML file, or create it with defaults if missing."""
 
-        if not self.config_filepath.exists():
-            self.config = {
+        default_config = {
                 "recent files": {
                     "recents": ["", "", "", "", ""]
                 },
@@ -711,12 +709,16 @@ class MainDataPage:
                     "path" : ""
                 }
             }
+
+        if not self.config_filepath.exists():
+            self.config = default_config.copy()
             with open(self.config_filepath, "w") as f:
                 toml.dump(self.config, f)
         else:
             try:
                 configdata = toml.load(self.config_filepath)
-                self.config = configdata
+                self.config = default_config.copy()
+                self.config.update(configdata)
             except Exception as ex:
                 logger.error(f"Failed to load config file: {ex}")
                 ui.notify("Error loading user config file", color="red")
