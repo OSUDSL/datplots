@@ -14,8 +14,9 @@ import webview
 
 
 # Change top layout
-# Add save location option
 # Add empty graph placeholder for no file loaded
+# Display summary stats for minimized regions 
+# Make summary look better
 
 
 class MainDataPage:
@@ -55,37 +56,37 @@ class MainDataPage:
         self.load_config_file()
 
         # Create the main UI elements
-        with ui.row(align_items="center").style("width:100%; display: flex;"):
+        with ui.row(align_items="center").style("width:100%; display: flex;background-color:#1f1f1f; padding:10px;border-radius: 20px"):
             ui.icon("o_toys").style('font-size: 50px; flex:1;').tooltip('kachow!')
 
-            with ui.row().style('border-radius: 20px;flex:1'):
-                # Main button with tooltip
-                with ui.button(icon='folder', on_click=self.get_path).style('width:60%'):
-                    ui.tooltip('Load DAT File').classes('bg-blue')
+            with ui.row().style('gap: 1px'):
+                with ui.row(wrap=False).style('border-radius: 20px;flex:1'):
+                    # Main button with tooltip
+                    with ui.button(icon='folder', on_click=self.get_path).style('width:55%;font-size:16px;'):
+                        ui.tooltip('Load DAT File').classes('bg-blue')
 
-                # Dropdown arrow
-                menu_dropdown = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%')
+                    # Dropdown arrow
+                    menu_dropdown = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
 
-                self.gui_components["load_file_button"] = ui.menu().bind_value(menu_dropdown).props('auto-close')
+                    self.gui_components["load_file_button"] = ui.menu().bind_value(menu_dropdown).props('auto-close')
+
+                with ui.row(wrap=False).style('border-radius: 20px; flex:1; margin-left:0px'):
+                    # Main button with tooltip
+                    with ui.button(icon='save', on_click=self.save_main_plot_as_jpg).style('width:55%;font-size:16px;'):
+                        ui.tooltip('Save as JPEG').classes('bg-green')
+
+                    # Dropdown arrow
+                    menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
+
+                    
+                    with ui.menu().props('auto-close').bind_value(menu_button):
+                        self.gui_components["saved file"] =  ui.row(align_items="center")
+                        with self.gui_components["saved file"]:
+                            ui.menu_item(f"{self.config["save plots"]["path"]}")
+                            ui.separator().props('vertical')
+                            ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center; text:center')
                 
-
-        
-
-            with ui.row().style('border-radius: 20px; flex:1'):
-                # Main button with tooltip
-                with ui.button(icon='save', on_click=self.save_main_plot_as_jpg).style('width:60%'):
-                    ui.tooltip('Save as JPEG').classes('bg-green')
-
-                # Dropdown arrow
-                menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%')
-
-                
-                with ui.menu().props('auto-close').bind_value(menu_button):
-                    self.gui_components["saved file"] =  ui.row(align_items="center")
-                    with self.gui_components["saved file"]:
-                        ui.menu_item(f"{self.config["save plots"]["path"]}")
-                        ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center')
-
+            ui.separator().props('vertical')
             # Dropdown for x-axis selection (SimTime / DatTime)
             self.gui_components["x_axis_dropdown"] = ui.select(
                 ["SimTime", "DatTime"],
@@ -111,82 +112,112 @@ class MainDataPage:
 
             self.load_recents()
 
-        # Display current filename heading
-        ui.label().classes("text-lg font-semibold mt-2").bind_text_from(
-            self.bindings, "current file", backward=lambda n: f"{Path(n).name}"
-        )
+        with ui.scroll_area().classes('w-full h-[calc(100vh-0.5rem)]'):
+            # Display current filename heading
+            ui.label().classes("text-lg font-semibold mt-2").bind_text_from(
+                self.bindings, "current file", backward=lambda n: f"{Path(n).name}"
+            )
 
-        # Add control panel in an expansion panel
-        with ui.expansion().style(
-            "background-color:#1f1f1f; border-radius: 10px;"
-        ) as expansion:
-            with expansion.add_slot("header"):
-                ui.icon("settings").style(
-                    "color: white; border-radius: 5px; font-size: 30px; "
-                )
-            with ui.row().style("width:100%; display:flex;"):
-                # Horizontal layout for the remaining inputs and buttons
-                with ui.row().style("width:100%; display:flex;"):
-                    self.gui_components["toggleButton"] = (
-                        ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box)
-                        .style("flex:1; margin-top:5px;font-size:13px")
-                        .props("color=dark")
-                    )
+            
 
-                    # Input for vertical line position
-                    self.gui_components["vertical_line_input"] = (
-                        ui.input("Vertical Line Position (X)")
-                        .on("change", self.plot_selected_column)
-                        .style("flex:2;")
-                    )
-                    # Input for horizontal line position
-                    self.gui_components["horizontal_line_input"] = (
-                        ui.input("Horizontal Line Position (Y)")
-                        .on("change", self.plot_selected_column)
-                        .style("flex:2;")
-                    )
+            # containers for plot1
 
-                    with ui.column():
-                        # Button to reset lines
-                        ui.button("Reset Lines", on_click=self.reset_lines).style(
-                            "border-radius: 10px;flex:1; font-size:10px"
-                        ).props("color=dark")
+            with ui.element('div').classes('w-full').style("padding:2px; border-radius: 10px; background-color:#161616"):
+                with ui.tabs().classes('w-full') as tabs:
+                    one = ui.tab('Plot')
+                    two = ui.tab('Histogram')
+                
+                with ui.tab_panels(tabs, value=one).classes('w-full').style("background-color:#161616"):
+                    
+                    with ui.tab_panel(one).style("border-radius: 10px; background-color:#161616"):
 
-                        # Reset button to restore original zoom
-                        ui.button("Reset Zoom", on_click=self.reset_graph).style(
-                            "flex:1; text-align:center; border-radius: 10px;font-size:10px"
-                        ).props("color=dark")
+                        with ui.row():
+                            # Add control panel in an expansion panel
+                            with ui.expansion().style(
+                                "background-color:#1f1f1f; border-radius: 10px;"
+                            ) as expansion:
+                                with expansion.add_slot("header"):
+                                    ui.icon("settings").style(
+                                        "color: white; border-radius: 5px; font-size: 30px; "
+                                    )
+                                with ui.row().style("width:100%; display:flex;"):
+                                    # Horizontal layout for the remaining inputs and buttons
+                                    with ui.row().style("width:100%; display:flex;"):
+                                        self.gui_components["toggleButton"] = (
+                                            ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box)
+                                            .style("flex:1; margin-top:5px;font-size:13px")
+                                            .props("color=dark")
+                                        )
 
-        # containers for plot1
-        self.gui_components["plot_container"] = ui.element("div").style(
-            "width: 100%; height: 100vh;"
-        )  # Full width, dynamic height
+                                        # Input for vertical line position
+                                        self.gui_components["vertical_line_input"] = (
+                                            ui.input("Vertical Line Position (X)")
+                                            .on("change", self.plot_selected_column)
+                                            .style("flex:2;")
+                                        )
+                                        # Input for horizontal line position
+                                        self.gui_components["horizontal_line_input"] = (
+                                            ui.input("Horizontal Line Position (Y)")
+                                            .on("change", self.plot_selected_column)
+                                            .style("flex:2;")
+                                        )
 
-        # Add a separator between the control panel and histogram plot
-        ui.separator().style("margin-top: 5px; margin-bottom: 10px;")
+                                        with ui.column():
+                                            # Button to reset lines
+                                            ui.button("Reset Lines", on_click=self.reset_lines).style(
+                                                "border-radius: 10px;flex:1; font-size:10px"
+                                            ).props("color=dark")
 
-        # container for histogram plot
-        self.gui_components["histogram_container"] = ui.element("div").style(
-            "width: 100%; height: 100vh;"
-        )
+                                            # Reset button to restore original zoom
+                                            ui.button("Reset Zoom", on_click=self.reset_graph).style(
+                                                "flex:1; text-align:center; border-radius: 10px;font-size:10px"
+                                            ).props("color=dark")
+                            with ui.row(wrap=False).style('border-radius: 20px; flex:1; margin-left:0px'):
+                                # Main button with tooltip
+                                with ui.button(icon='save', on_click=self.save_main_plot_as_jpg).style('width:55%;font-size:16px;'):
+                                    ui.tooltip('Save Plot as JPEG').classes('bg-green')
 
-        # Add a toggle button for filtering zeros (histogram)
-        self.filter_zeros = False
+                                # Dropdown arrow
+                                menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
 
-        ui.button(
-            "Save Histogram as JPG", on_click=self.save_histogram_as_jpg, icon="save"
-        )
+                                
+                                with ui.menu().props('auto-close').bind_value(menu_button):
+                                    self.gui_components["saved file"] =  ui.row(align_items="center")
+                                    with self.gui_components["saved file"]:
+                                        ui.menu_item(f"{self.config["save plots"]["path"]}")
+                                        ui.separator().props('vertical')
+                                        ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center; text:center')
 
-        def toggle_filter():
-            self.filter_zeros = not self.filter_zeros
-            self.plot_histogram()  # Re-plot the histogram with the new filter state
-            ui.notify(f"Filtering Zeros: {'ON' if self.filter_zeros else 'OFF'}")
+                        self.gui_components["plot_container"] = ui.element("div").style(
+                    "width: 100%; height: 100vh;")  # Full width, dynamic height
+                    
+                    
+                    with ui.tab_panel(two).style("border-radius: 10px; background-color:#161616"):
 
-        ui.button("Toggle Zero Filter", on_click=toggle_filter)
+                        def toggle_filter():
+                            self.filter_zeros = not self.filter_zeros
+                            self.plot_histogram()  # Re-plot the histogram with the new filter state
+                            ui.notify(f"Filtering Zeros: {'ON' if self.filter_zeros else 'OFF'}")
 
-        # Stats
-        ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
-        self.stats_container = ui.column()
+                        with ui.row():
+                            ui.button("Save Histogram as JPG", on_click=self.save_histogram_as_jpg, icon="save")
+                            ui.button("Toggle Zero Filter", on_click=toggle_filter)
+
+                        # container for histogram plot
+                        self.gui_components["histogram_container"] = ui.element("div").style(
+                    "width: 100%; height: 100vh;")
+                        
+                        # Add a toggle button for filtering zeros (histogram)
+                        self.filter_zeros = False
+
+
+                    
+                        
+        
+
+            # Stats
+            ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
+            self.stats_container = ui.column()
 
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
@@ -210,7 +241,8 @@ class MainDataPage:
 
                 with self.gui_components["saved file"]:
                     ui.menu_item(f"{self.config["save plots"]["path"]}")
-                    ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center')
+                    ui.separator().props('vertical')
+                    ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center; text:center')
 
            
         except Exception as ex:
