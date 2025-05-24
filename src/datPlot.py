@@ -228,8 +228,9 @@ class MainDataPage:
                     "width: 100%; height: 100vh;")
                         
                         if(self.bindings['current file'] == "No file loaded"):
-                            temp_x = [1, 2, 3, 4]
-                            temp_y = [2, 5, 12, 10]
+                            self.x_data = [1, 2, 3, 4]
+                            self.y_data_1 = [2, 5, 12, 10]
+                            self.y_data_2 = [2, 5, 12, 10]
                             fig = go.Figure()
                             fig.add_trace(go.Histogram(x=temp_y, name=f"Histogram of temp", opacity=0.7))
 
@@ -404,9 +405,9 @@ class MainDataPage:
 
         # Set the initial min and max range based on the x-axis data
         x_column = self.gui_components["x_axis_dropdown"].value
-        x_data = self.dat_file_data[x_column].to_numpy()
-        x_beginning = x_data.min()
-        x_end = x_data.max()
+        self.x_data = self.dat_file_data[x_column].to_numpy()
+        x_beginning = self.x_data.min()
+        x_end = self.x_data.max()
 
         # Store the original range for resetting
         self.original_min_max = {"min": x_beginning, "max": x_end}
@@ -430,14 +431,14 @@ class MainDataPage:
         x_column = self.gui_components["x_axis_dropdown"].value  # x axis
 
         if self.dat_file_data is not None and y_column_1 in self.dat_file_data.columns:
-            x_data = self.dat_file_data[x_column].to_numpy()
+            self.x_data = self.dat_file_data[x_column].to_numpy()
 
             self.y_data_1 = self.dat_file_data[y_column_1].to_numpy()
             self.y_data_2 = None
 
             # Create the first trace for the left y-axis
             self.plot_figure = go.Figure(
-                data=go.Scatter(x=x_data, y=self.y_data_1, name=y_column_1, yaxis="y1")
+                data=go.Scatter(x=self.x_data, y=self.y_data_1, name=y_column_1, yaxis="y1")
             )
 
             plotTitle = f"Plot of {y_column_1} vs {x_column}"
@@ -449,7 +450,7 @@ class MainDataPage:
             ):
                 self.self.y_data_2 = self.dat_file_data[y_column_2].to_numpy()
                 self.plot_figure.add_trace(
-                    go.Scatter(x=x_data, y=self.y_data_2, name=y_column_2, yaxis="y2")
+                    go.Scatter(x=self.x_data, y=self.y_data_2, name=y_column_2, yaxis="y2")
                 )
                 plotTitle = f"Plot of {y_column_1} and {y_column_2} vs {x_column}"
 
@@ -501,12 +502,12 @@ class MainDataPage:
 
             # Add the new plot
             with self.gui_components["plot_container"]:
-                # ui.plotly(self.plot_figure).on('plotly_relayout', handler=self.handle_relayout).style(
-                #     "width: 100%; height: 100%;"
-                # )  
-                ui.plotly(self.plot_figure).style(
-                     "width: 100%; height: 100%;"
-                 )  
+                ui.plotly(self.plot_figure).on('plotly_relayout', handler=self.handle_relayout).style(
+                    "width: 100%; height: 100%;"
+                )  
+                # ui.plotly(self.plot_figure).style(
+                #      "width: 100%; height: 100%;"
+                #  )  
             
             self.bindings["graph rendered"] = True
 
@@ -591,22 +592,29 @@ class MainDataPage:
 
 
     def handle_relayout(self, event):
-        self.range_start = event.args['xaxis.range'][0]
-        self.range_end = event.args['xaxis.range'][1]
+        if 'xaxis.range' in event.args:
+            self.range_start = event.args['xaxis.range'][0]
+            self.range_end = event.args['xaxis.range'][1]
+        elif "xaxis.range[0]" in event.args:
+            self.range_start = event.args['xaxis.range[0]']
+            self.range_end  = event.args['xaxis.range[1]']
         self.add_zoom_stats()
-  
+
+
     def add_zoom_stats(self):
         self.zoom_stats_container.clear()
 
-        #new_stat = self.compute_stats(self.range)
-        new_range = range(int(self.range_start), int(self.range_end))
-        new_data_y_1 = [self.y_data_1[i] for i in new_range]
-        new_data_y_2 = [self.y_data_2[i] for i in new_range]
+        x_range_indices = np.where((self.x_data >= self.range_start) & (self.x_data <= self.range_end))
+
+        new_data_y_1 = self.y_data_1[x_range_indices]
+
+        if self.y_data_2 is not None:
+            new_data_y_2 = self.y_data_2[x_range_indices]
 
         if new_data_y_1 is not None:
             stats_1 = self.compute_stats(new_data_y_1)
             with self.zoom_stats_container:
-                ui.label(f"Summary Stats for :").classes(
+                ui.label(f"Summary Stats for Zoom:").classes(
                     "text-lg font-semibold"
                 )
                 ui.label(
@@ -615,10 +623,11 @@ class MainDataPage:
                 )
 
         # Compute and display stats for the second Y-axis column, if selected
-        if new_data_y_2 is not None:
+        if self.y_data_2 is not None:
             stats_2 = self.compute_stats(new_data_y_2)
             with self.zoom_stats_container:
-                ui.label(f"Summary Stats for :").classes(
+                # TODO FIX LATER ADD LABELS
+                ui.label(f"Summary Stats for Zoom:").classes(
                     "text-lg font-semibold"
                 )
                 ui.label(
@@ -660,12 +669,7 @@ class MainDataPage:
                     f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
                     f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}"
                 )
-        # with self.stats_container:
-        #     ui.label(
-        #         f"SCALED DATA: MIN:{self.bindings['plot range'][0]} MAZ{self.bindings['plot range'][1]}"
-        #     )
-
-        #ADD SCALED
+       
 
     @staticmethod
     def compute_stats(data):
@@ -691,10 +695,10 @@ class MainDataPage:
             x_column = self.gui_components["x_axis_dropdown"].value
 
             self.y_data_1 = self.dat_file_data[y_column_1].to_numpy()
-            x_data = self.dat_file_data[x_column].to_numpy()
+            self.x_data = self.dat_file_data[x_column].to_numpy()
 
             fig = go.Figure(
-                data=go.Scatter(x=x_data, y=self.y_data_1, name=y_column_1, yaxis="y1")
+                data=go.Scatter(x=self.x_data, y=self.y_data_1, name=y_column_1, yaxis="y1")
             )
 
             if (
@@ -703,7 +707,7 @@ class MainDataPage:
             ):
                 self.y_data_2 = self.dat_file_data[y_column_2].to_numpy()
                 fig.add_trace(
-                    go.Scatter(x=x_data, y=self.y_data_2, name=y_column_2, yaxis="y2")
+                    go.Scatter(x=self.x_data, y=self.y_data_2, name=y_column_2, yaxis="y2")
                 )
 
             # Add layout details
