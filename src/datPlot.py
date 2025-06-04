@@ -15,6 +15,7 @@ import webview
 
 # Display summary stats for minimized regions 
 # Make summary look better
+# Make executable? - most modern solution
 
 
 class MainDataPage:
@@ -254,9 +255,10 @@ class MainDataPage:
 
             # Stats
             ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
-            with ui.column():
-                self.stats_container = ui.column()
-                self.zoom_stats_container = ui.column()
+            
+            with ui.row().classes("w-full").style("display: flex;"):
+                self.stats_container = ui.card().style("flex:1")
+                self.zoom_stats_container = ui.card().style("flex:1")
 
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
@@ -448,7 +450,7 @@ class MainDataPage:
                 y_column_2 != "Select Graph"
                 and y_column_2 in self.dat_file_data.columns
             ):
-                self.self.y_data_2 = self.dat_file_data[y_column_2].to_numpy()
+                self.y_data_2 = self.dat_file_data[y_column_2].to_numpy()
                 self.plot_figure.add_trace(
                     go.Scatter(x=self.x_data, y=self.y_data_2, name=y_column_2, yaxis="y2")
                 )
@@ -602,6 +604,10 @@ class MainDataPage:
 
 
     def add_zoom_stats(self):
+        
+        y_column_2 = self.gui_components["second_graph_dropdown"].value
+
+
         self.zoom_stats_container.clear()
 
         x_range_indices = np.where((self.x_data >= self.range_start) & (self.x_data <= self.range_end))
@@ -617,23 +623,75 @@ class MainDataPage:
                 ui.label(f"Summary Stats for Zoom:").classes(
                     "text-lg font-semibold"
                 )
-                ui.label(
-                    f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
-                    f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}"
-                )
+
+                ui.separator()
+
+                
+                with ui.column().classes('w-full items-center'):
+                    with ui.row(wrap=True):
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['mean']:.2f}").classes("text-lg gap-0")
+                            ui.label("Mean").classes("font-semibold gap-0")
+                            ui.separator().props('vertical')
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['median']:.2f}").classes("text-lg gap-0")
+                            ui.label("Median").classes("font-semibold gap-0")
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['std']:.2f}").classes("text-lg gap-0")
+                            ui.label("Std Dev").classes("font-semibold gap-0")
+                        ui.separator()
+                    with ui.row(wrap=False, align_items='stretch').classes('items-center'):
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['min']:.2f}").classes("text-lg gap-0")
+                            ui.label("Min").classes("font-semibold gap-0")
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['max']:.2f}").classes("text-lg gap-0")
+                            ui.label("Max").classes("font-semibold gap-0")
+                
+                # ui.label(
+                #     f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
+                #     f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}"
+                # )
 
         # Compute and display stats for the second Y-axis column, if selected
         if self.y_data_2 is not None:
+
             stats_2 = self.compute_stats(new_data_y_2)
             with self.zoom_stats_container:
+                ui.separator()
+
                 # TODO FIX LATER ADD LABELS
-                ui.label(f"Summary Stats for Zoom:").classes(
+                ui.label(f"Summary Stats for {y_column_2}:").classes(
                     "text-lg font-semibold"
                 )
-                ui.label(
-                    f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
-                    f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}"
-                )
+                ui.separator()
+
+                with ui.column().classes('w-full items-center'):
+                    with ui.row(wrap=True):
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['mean']:.2f}").classes("text-lg gap-0")
+                            ui.label("Mean").classes("font-semibold gap-0")
+                            ui.separator().props('vertical')
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['median']:.2f}").classes("text-lg gap-0")
+                            ui.label("Median").classes("font-semibold gap-0")
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['std']:.2f}").classes("text-lg gap-0")
+                            ui.label("Std Dev").classes("font-semibold gap-0")
+                        ui.separator()
+                    with ui.row(wrap=False, align_items='stretch').classes('items-center'):
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['min']:.2f}").classes("text-lg gap-0")
+                            ui.label("Min").classes("font-semibold gap-0")
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['max']:.2f}").classes("text-lg gap-0")
+                            ui.label("Max").classes("font-semibold gap-0")
+
+
+                # ui.label(
+                #     f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
+                #     f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}"
+                # )
         
         
 
@@ -653,22 +711,73 @@ class MainDataPage:
                 ui.label(f"Summary Stats for {y_column_1}:").classes(
                     "text-lg font-semibold"
                 )
-                ui.label(
-                    f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
-                    f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}"
-                )
+                ui.separator()
+
+                with ui.column().classes('w-full items-center'):
+                    with ui.row(wrap=True):
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['mean']:.2f}").classes("text-lg gap-0")
+                            ui.label("Mean").classes("font-semibold gap-0")
+                            ui.separator().props('vertical')
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['median']:.2f}").classes("text-lg gap-0")
+                            ui.label("Median").classes("font-semibold gap-0")
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['std']:.2f}").classes("text-lg gap-0")
+                            ui.label("Std Dev").classes("font-semibold gap-0")
+                        ui.separator()
+
+                    with ui.row(wrap=False, align_items='stretch').classes('items-center'):
+
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['min']:.2f}").classes("text-lg gap-0")
+                            ui.label("Min").classes("font-semibold gap-0")
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_1['max']:.2f}").classes("text-lg gap-0")
+                            ui.label("Max").classes("font-semibold gap-0")
+
+            
+                # ui.label(
+                #     f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
+                #     f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}"
+                # )
 
         # Compute and display stats for the second Y-axis column, if selected
         if self.y_data_2 is not None:
             stats_2 = self.compute_stats(self.y_data_2)
             with self.stats_container:
+                ui.separator().props("color=dark, inset=False")
+
                 ui.label(f"Summary Stats for {y_column_2}:").classes(
                     "text-lg font-semibold"
                 )
-                ui.label(
-                    f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
-                    f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}"
-                )
+                
+                ui.separator()
+
+                with ui.column().classes('w-full items-center'):
+                    with ui.row(wrap=True):
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['mean']:.2f}").classes("text-lg gap-0")
+                            ui.label("Mean").classes("font-semibold gap-0")
+                            ui.separator().props('vertical')
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['median']:.2f}").classes("text-lg gap-0")
+                            ui.label("Median").classes("font-semibold gap-0")
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['std']:.2f}").classes("text-lg gap-0")
+                            ui.label("Std Dev").classes("font-semibold gap-0")
+                        ui.separator()
+                    with ui.row(wrap=False, align_items='stretch').classes('items-center'):
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['min']:.2f}").classes("text-lg gap-0")
+                            ui.label("Min").classes("font-semibold gap-0")
+                        with ui.column().classes('items-center gap-0'):
+                            ui.label(f"{stats_2['max']:.2f}").classes("text-lg gap-0")
+                            ui.label("Max").classes("font-semibold gap-0")
+                # ui.label(
+                #     f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
+                #     f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}"
+                # )
        
 
     @staticmethod
