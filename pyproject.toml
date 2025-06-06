@@ -17,7 +17,9 @@ dependencies = [
     "pendulum",
     "kaleido == 0.2.1",
     "appdirs",
-    "toml"
+    "toml",
+    "pyinstaller",
+    "pynput"
 ]
 
 [project.scripts]

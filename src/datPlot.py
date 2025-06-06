@@ -16,6 +16,7 @@ import webview
 # Display summary stats for minimized regions 
 # Make summary look better
 # Make executable? - most modern solution
+# Line words cut off fix
 
 
 class MainDataPage:
@@ -30,9 +31,9 @@ class MainDataPage:
         self.range_end = None
 
         self.config: dict = {}
-        self.config_filepath = Path(
-            AppDirs("DatPlot", "DSL").user_config_dir
-        ) / Path("config.toml")
+        self.config_dir = Path(
+            AppDirs("DatPlot", "DSL").user_config_dir)
+        self.config_filepath = self.config_dir / Path("config.toml")
 
         self.gui_components: dict = {
             "graph_dropdown": None,
@@ -60,7 +61,6 @@ class MainDataPage:
 
     def page_creation(self):
 
-        self.load_config_file()
 
         # Create the main UI elements
         with ui.row(align_items="center").style("width:100%; display: flex;background-color:#1f1f1f; padding:10px;border-radius: 20px"):
@@ -84,12 +84,11 @@ class MainDataPage:
 
                     # Dropdown arrow
                     menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
-
                     
                     with ui.menu().props('auto-close').bind_value(menu_button):
                         self.gui_components["saved file"] =  ui.row(align_items="center")
                         with self.gui_components["saved file"]:
-                            ui.menu_item(f"{self.config["save plots"]["path"]}")
+                            ui.menu_item(f"{self.config['save plots']['path']}")
                             ui.separator().props('vertical')
                             ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center; text:center')
                 
@@ -125,7 +124,7 @@ class MainDataPage:
                 self.bindings, "current file", backward=lambda n: f"{Path(n).name}"
             )
             # containers for plot1
-
+            
             with ui.element('div').classes('w-full').style("padding:2px; border-radius: 10px; background-color:#161616"):
                 with ui.tabs(on_change=self.changeTabHandler).classes('w-full') as tabs:
                     one = ui.tab('Plot')
@@ -934,6 +933,7 @@ class MainDataPage:
 
         if not self.config_filepath.exists():
             self.config = default_config.copy()
+            os.makedirs(self.config_dir, exist_ok=True)
             with open(self.config_filepath, "w") as f:
                 toml.dump(self.config, f)
         else:
@@ -948,6 +948,9 @@ class MainDataPage:
 
 def init_gui():
     page = MainDataPage()
+    
+    page.load_config_file()
+
     page.page_creation()
 
     # dark mode
