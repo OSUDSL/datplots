@@ -19,7 +19,7 @@ dependencies = [
     "appdirs",
     "toml",
     "pyinstaller",
-    "pynput"
+    "pynput",
 ]
 
 [project.scripts]

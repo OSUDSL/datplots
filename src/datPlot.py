@@ -154,13 +154,13 @@ class MainDataPage:
 
                                         # Input for vertical line position
                                         self.gui_components["vertical_line_input"] = (
-                                            ui.input("Vertical Line Position (X)")
+                                            ui.input("Vertical Line Pos (X)")
                                             .on("change", self.plot_selected_column)
-                                            .style("flex:2;")
+                                            .style("flex:2; overflow: visible")
                                         )
                                         # Input for horizontal line position
                                         self.gui_components["horizontal_line_input"] = (
-                                            ui.input("Horizontal Line Position (Y)")
+                                            ui.input("Horizontal Line Pos (Y)")
                                             .on("change", self.plot_selected_column)
                                             .style("flex:2;")
                                         )
