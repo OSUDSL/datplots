@@ -13,10 +13,9 @@ from pathlib import Path
 import webview
 
 
-# Display summary stats for minimized regions 
 # Make summary look better
 # Make executable? - most modern solution
-# Line words cut off fix
+# Copy to clipboard
 
 
 class MainDataPage:
@@ -60,7 +59,6 @@ class MainDataPage:
         }
 
     def page_creation(self):
-
 
         # Create the main UI elements
         with ui.row(align_items="center").style("width:100%; display: flex;background-color:#1f1f1f; padding:10px;border-radius: 20px"):
@@ -604,8 +602,8 @@ class MainDataPage:
 
     def add_zoom_stats(self):
         
+        y_column_1 = self.gui_components["graph_dropdown"].value
         y_column_2 = self.gui_components["second_graph_dropdown"].value
-
 
         self.zoom_stats_container.clear()
 
@@ -619,12 +617,11 @@ class MainDataPage:
         if new_data_y_1 is not None:
             stats_1 = self.compute_stats(new_data_y_1)
             with self.zoom_stats_container:
-                ui.label(f"Summary Stats for Zoom:").classes(
+                ui.label(f"Stats for {y_column_1} (Zoomed Region):").classes(
                     "text-lg font-semibold"
                 )
 
                 ui.separator()
-
                 
                 with ui.column().classes('w-full items-center'):
                     with ui.row(wrap=True):
@@ -646,11 +643,11 @@ class MainDataPage:
                         with ui.column().classes('items-center gap-0'):
                             ui.label(f"{stats_1['max']:.2f}").classes("text-lg gap-0")
                             ui.label("Max").classes("font-semibold gap-0")
+                    
+                    ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_1))
+
+
                 
-                # ui.label(
-                #     f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
-                #     f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}"
-                # )
 
         # Compute and display stats for the second Y-axis column, if selected
         if self.y_data_2 is not None:
@@ -660,7 +657,7 @@ class MainDataPage:
                 ui.separator()
 
                 # TODO FIX LATER ADD LABELS
-                ui.label(f"Summary Stats for {y_column_2}:").classes(
+                ui.label(f"Stats for {y_column_2} (Zoomed Region):").classes(
                     "text-lg font-semibold"
                 )
                 ui.separator()
@@ -685,14 +682,14 @@ class MainDataPage:
                         with ui.column().classes('items-center gap-0'):
                             ui.label(f"{stats_2['max']:.2f}").classes("text-lg gap-0")
                             ui.label("Max").classes("font-semibold gap-0")
+                    
+                    ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_2))
+    
 
-
-                # ui.label(
-                #     f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
-                #     f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}"
-                # )
-        
-        
+    def copyStats(self, stats):
+        data = f"""Mean: {stats['mean']:.2f}\nMeidan: {stats['median']:.2f}\nStd Dev: {stats['std']:.2f}\nMin: {stats['min']:.2f}\nMax: {stats['max']:.2f}"""
+        ui.clipboard.write(data)
+        ui.notify("Stats Copied", color='green')
 
 
     def update_summary_stats(self):
@@ -707,7 +704,7 @@ class MainDataPage:
         if self.y_data_1 is not None:
             stats_1 = self.compute_stats(self.y_data_1)
             with self.stats_container:
-                ui.label(f"Summary Stats for {y_column_1}:").classes(
+                ui.label(f"Stats for {y_column_1}:").classes(
                     "text-lg font-semibold"
                 )
                 ui.separator()
@@ -734,12 +731,10 @@ class MainDataPage:
                         with ui.column().classes('items-center gap-0'):
                             ui.label(f"{stats_1['max']:.2f}").classes("text-lg gap-0")
                             ui.label("Max").classes("font-semibold gap-0")
-
             
-                # ui.label(
-                #     f"Mean: {stats_1['mean']:.2f}, Median: {stats_1['median']:.2f}, "
-                #     f"Std Dev: {stats_1['std']:.2f}, Min: {stats_1['min']:.2f}, Max: {stats_1['max']:.2f}"
-                # )
+                    ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_1))
+
+                
 
         # Compute and display stats for the second Y-axis column, if selected
         if self.y_data_2 is not None:
@@ -747,7 +742,7 @@ class MainDataPage:
             with self.stats_container:
                 ui.separator().props("color=dark, inset=False")
 
-                ui.label(f"Summary Stats for {y_column_2}:").classes(
+                ui.label(f"Stats for {y_column_2}:").classes(
                     "text-lg font-semibold"
                 )
                 
@@ -773,10 +768,9 @@ class MainDataPage:
                         with ui.column().classes('items-center gap-0'):
                             ui.label(f"{stats_2['max']:.2f}").classes("text-lg gap-0")
                             ui.label("Max").classes("font-semibold gap-0")
-                # ui.label(
-                #     f"Mean: {stats_2['mean']:.2f}, Median: {stats_2['median']:.2f}, "
-                #     f"Std Dev: {stats_2['std']:.2f}, Min: {stats_2['min']:.2f}, Max: {stats_2['max']:.2f}"
-                # )
+                    
+                    ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_2))
+
        
 
     @staticmethod
