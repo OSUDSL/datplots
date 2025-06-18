@@ -15,8 +15,18 @@ dependencies = [
     "plotly",
     "pywebview",
     "pendulum",
-    "kaleido"
+    "kaleido == 0.2.1",
+    "appdirs",
+    "toml",
+    "pyinstaller",
+    "pynput",
 ]
+
+[project.scripts]
+datplot = "datPlot:init_gui"
+
+[tool.uv]
+package = true
 
 [tool.rye]
 managed = true
