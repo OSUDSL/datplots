@@ -86,7 +86,7 @@ class MainDataPage:
                     with ui.menu().props('auto-close').bind_value(menu_button):
                         self.gui_components["saved file"] =  ui.row(align_items="center")
                         with self.gui_components["saved file"]:
-                            ui.menu_item(f"{self.config['save plots']['path']}")
+                            ui.menu_item(f"{self.config['save plots']['path']}").style("pointer-events: none;")
                             ui.separator().props('vertical')
                             ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center; text:center')
                 
