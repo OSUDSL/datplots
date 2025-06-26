@@ -607,12 +607,12 @@ class MainDataPage:
 
         self.zoom_stats_container.clear()
 
-        x_range_indices = np.where((self.x_data >= self.range_start) & (self.x_data <= self.range_end))
+        self.x_range_indices = np.where((self.x_data >= self.range_start) & (self.x_data <= self.range_end))
 
-        new_data_y_1 = self.y_data_1[x_range_indices]
-
+        new_data_y_1 = self.y_data_1[self.x_range_indices]
+        
         if self.y_data_2 is not None:
-            new_data_y_2 = self.y_data_2[x_range_indices]
+            new_data_y_2 = self.y_data_2[self.x_range_indices]
 
         if new_data_y_1 is not None:
             stats_1 = self.compute_stats(new_data_y_1)
@@ -645,9 +645,7 @@ class MainDataPage:
                             ui.label("Max").classes("font-semibold gap-0")
                     
                     ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_1))
-
-
-                
+        
 
         # Compute and display stats for the second Y-axis column, if selected
         if self.y_data_2 is not None:
@@ -786,62 +784,33 @@ class MainDataPage:
 
     def save_main_plot_as_jpg(self):
         """Save the main plot as a .jpg image."""
-        if self.dat_file_data is None or not self.bindings["graph rendered"]:
-            ui.notify("No main plot to save!", color="red")
-            return
+      
+        # Generate the filename using a timestamp
+        import datetime
 
-        try:
-            # Retrieve the main plot data
-            y_column_1 = self.gui_components["graph_dropdown"].value
-            y_column_2 = self.gui_components["second_graph_dropdown"].value
-            x_column = self.gui_components["x_axis_dropdown"].value
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"main_plot_{timestamp}.jpg"
+        path = self.config['save plots']['path']
+        save_location = Path(path) / Path(filename)
 
-            self.y_data_1 = self.dat_file_data[y_column_1].to_numpy()
-            self.x_data = self.dat_file_data[x_column].to_numpy()
+        fig = self.plot_figure
 
-            fig = go.Figure(
-                data=go.Scatter(x=self.x_data, y=self.y_data_1, name=y_column_1, yaxis="y1")
-            )
-
-            if (
-                y_column_2 != "Select Graph"
-                and y_column_2 in self.dat_file_data.columns
-            ):
-                self.y_data_2 = self.dat_file_data[y_column_2].to_numpy()
-                fig.add_trace(
-                    go.Scatter(x=self.x_data, y=self.y_data_2, name=y_column_2, yaxis="y2")
-                )
-
-            # Add layout details
+        if self.bindings["box zoom"]:
             fig.update_layout(
-                template="plotly_dark",
-                title=f"Plot of {y_column_1} and {y_column_2} vs {x_column}",
-                autosize=True,
-                xaxis=dict(title=x_column),
-                yaxis=dict(title=y_column_1),
-                yaxis2=dict(
-                    title=y_column_2,
-                    overlaying="y",
-                    side="right",
-                ),
-            )
+            xaxis=dict(range=[self.range_start, self.range_end]))        
+        else:
+            new_data_y_1 = self.y_data_1[self.x_range_indices]
 
-            # Generate the filename using a timestamp
-            import datetime
+            fig.update_layout(
+            xaxis=dict(range=[self.range_start, self.range_end]),
+            yaxis=dict(range=[min(new_data_y_1), max(new_data_y_1)]))
+          
+        # Save the figure as a .jpg
+        fig.write_image(save_location, format="jpg")
 
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"main_plot_{timestamp}.jpg"
-            path = self.config['save plots']['path']
-            save_location = Path(path) / Path(filename)
-            # Save the figure as a .jpg
-            fig.write_image(save_location, format="jpg")
+        ui.notify(f"Main plot saved as {filename}", color="green")
+        logger.info(f"Main plot saved as {filename}")
 
-            ui.notify(f"Main plot saved as {filename}", color="green")
-            logger.info(f"Main plot saved as {filename}")
-
-        except Exception as ex:
-            ui.notify(f"Error saving main plot: {ex}", color="red")
-            logger.error(f"Error saving main plot: {ex}")
 
     def save_histogram_as_jpg(self):
         """Save the histogram plot as a .jpg image."""
