@@ -398,7 +398,7 @@ class MainDataPage:
 
         # Update dropdown options
         self.gui_components["graph_dropdown"].options = columns
-        self.gui_components["second_graph_dropdown"].options = columns
+        self.gui_components["second_graph_dropdown"].options = ["None"] + columns
         self.gui_components["graph_dropdown"].update()
         self.gui_components["second_graph_dropdown"].update()
 
