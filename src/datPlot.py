@@ -106,6 +106,8 @@ class MainDataPage:
                 on_change=self.plot_selected_column,  # column selection
             ).style('flex:2;')
 
+            ui.button(icon="compare_arrows", on_click=self.swap_y).style("width:2%").props("color=dark")
+
             # Dropdown for second Y-axis (column) selection
             self.gui_components["second_graph_dropdown"] = ui.select(
                 ["Select Graph"],
@@ -256,6 +258,16 @@ class MainDataPage:
             with ui.row().classes("w-full").style("display: flex;"):
                 self.stats_container = ui.card().style("flex:1")
                 self.zoom_stats_container = ui.card().style("flex:1")
+
+    def swap_y(self):
+        if self.gui_components["second_graph_dropdown"].value != "None":
+            y2_val = self.gui_components["second_graph_dropdown"].value
+            self.gui_components["second_graph_dropdown"].value = self.gui_components["graph_dropdown"].value
+            self.gui_components["graph_dropdown"].value = y2_val
+            self.gui_components["second_graph_dropdown"].update()
+            self.gui_components["graph_dropdown"].update()
+
+
 
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
@@ -925,7 +937,7 @@ def init_gui():
     favicon = str(Path(__file__).parent / "favicon.ico")
 
     # Start the NiceGUI app
-    ui.run(native=True, reload=False, title="DatPlot", favicon=favicon)
+    ui.run(native=True, reload=False, title="DatPlot", favicon=favicon,window_size=(1024, 786))
 
 
 def shutdown_handler():
