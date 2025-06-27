@@ -46,7 +46,8 @@ class MainDataPage:
             "load_file_button": None,
             "saved file": "",
             "current tab": "",
-            "zero button": ""
+            "zero button": "",
+            "summary_stats_container": None
         }
 
         self.bindings = {
@@ -83,12 +84,16 @@ class MainDataPage:
                     # Dropdown arrow
                     menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
                     
-                    with ui.menu().props('auto-close').bind_value(menu_button):
+                    with ui.menu().props().bind_value(menu_button):
                         self.gui_components["saved file"] =  ui.row(align_items="center")
                         with self.gui_components["saved file"]:
                             ui.menu_item(f"{self.config['save plots']['path']}").style("pointer-events: none;")
+                            with ui.button(icon='edit', on_click=self.get_save_path).style('align-self:center; text:center; font-size: 10px; width:10px;'):
+                                ui.tooltip('Change saving location')
                             ui.separator().props('vertical')
-                            ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center; text:center')
+                            self.img_select = ui.select(["PNG", "JPG", "SVG"], value="PNG")
+
+
                 
             ui.separator().props('vertical')
             # Dropdown for x-axis selection (SimTime / DatTime)
@@ -118,7 +123,7 @@ class MainDataPage:
 
             self.load_recents()
 
-        with ui.scroll_area().classes('w-full h-[calc(100vh-9rem)]'):
+        with ui.scroll_area().classes('w-full h-[calc(100vh-9rem)]').style("display:flex"):
             # Display current filename heading
             ui.label().classes("text-lg font-semibold mt-2").bind_text_from(
                 self.bindings, "current file", backward=lambda n: f"{Path(n).name}"
@@ -194,10 +199,6 @@ class MainDataPage:
                                 ),
                                 xaxis=dict(
                                     title="SimTime",
-                                    # range=[
-                                    #     self.bindings["zoom"][0],
-                                    #     self.bindings["zoom"][1],
-                                    # ],  # Use zoom range based on the control panel
                                     rangeslider=dict(visible=True),
                                 ),
                             )
@@ -254,8 +255,8 @@ class MainDataPage:
 
             # Stats
             ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
-            
-            with ui.row().classes("w-full").style("display: flex;"):
+            self.gui_components["summary_stats_container"] = ui.row().classes("w-full").style("display: flex; height:30%")
+            with self.gui_components["summary_stats_container"]:
                 self.stats_container = ui.card().style("flex:1")
                 self.zoom_stats_container = ui.card().style("flex:1")
 
@@ -614,86 +615,87 @@ class MainDataPage:
 
     def add_zoom_stats(self):
         
-        y_column_1 = self.gui_components["graph_dropdown"].value
-        y_column_2 = self.gui_components["second_graph_dropdown"].value
+        if self.range_start and self.range_end is not None:
+            y_column_1 = self.gui_components["graph_dropdown"].value
+            y_column_2 = self.gui_components["second_graph_dropdown"].value
 
-        self.zoom_stats_container.clear()
+            self.zoom_stats_container.clear()
 
-        self.x_range_indices = np.where((self.x_data >= self.range_start) & (self.x_data <= self.range_end))
+            self.x_range_indices = np.where((self.x_data >= self.range_start) & (self.x_data <= self.range_end))
 
-        new_data_y_1 = self.y_data_1[self.x_range_indices]
-        
-        if self.y_data_2 is not None:
-            new_data_y_2 = self.y_data_2[self.x_range_indices]
+            new_data_y_1 = self.y_data_1[self.x_range_indices]
+            
+            if self.y_data_2 is not None:
+                new_data_y_2 = self.y_data_2[self.x_range_indices]
 
-        if new_data_y_1 is not None:
-            stats_1 = self.compute_stats(new_data_y_1)
-            with self.zoom_stats_container:
-                ui.label(f"Stats for {y_column_1} (Zoomed Region):").classes(
-                    "text-lg font-semibold"
-                )
+            if new_data_y_1 is not None:
+                stats_1 = self.compute_stats(new_data_y_1)
+                with self.zoom_stats_container:
+                    ui.label(f"Stats for {y_column_1} (Zoomed Region):").classes(
+                        "text-lg font-semibold"
+                    )
 
-                ui.separator()
-                
-                with ui.column().classes('w-full items-center'):
-                    with ui.row(wrap=True):
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_1['mean']:.2f}").classes("text-lg gap-0")
-                            ui.label("Mean").classes("font-semibold gap-0")
-                            ui.separator().props('vertical')
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_1['median']:.2f}").classes("text-lg gap-0")
-                            ui.label("Median").classes("font-semibold gap-0")
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_1['std']:.2f}").classes("text-lg gap-0")
-                            ui.label("Std Dev").classes("font-semibold gap-0")
-                        ui.separator()
-                    with ui.row(wrap=False, align_items='stretch').classes('items-center'):
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_1['min']:.2f}").classes("text-lg gap-0")
-                            ui.label("Min").classes("font-semibold gap-0")
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_1['max']:.2f}").classes("text-lg gap-0")
-                            ui.label("Max").classes("font-semibold gap-0")
+                    ui.separator()
                     
-                    ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_1))
-        
+                    with ui.column().classes('w-full items-center'):
+                        with ui.row(wrap=True):
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_1['mean']:.2f}").classes("text-lg gap-0")
+                                ui.label("Mean").classes("font-semibold gap-0")
+                                ui.separator().props('vertical')
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_1['median']:.2f}").classes("text-lg gap-0")
+                                ui.label("Median").classes("font-semibold gap-0")
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_1['std']:.2f}").classes("text-lg gap-0")
+                                ui.label("Std Dev").classes("font-semibold gap-0")
+                            ui.separator()
+                        with ui.row(wrap=False, align_items='stretch').classes('items-center'):
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_1['min']:.2f}").classes("text-lg gap-0")
+                                ui.label("Min").classes("font-semibold gap-0")
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_1['max']:.2f}").classes("text-lg gap-0")
+                                ui.label("Max").classes("font-semibold gap-0")
+                        
+                        ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_1))
+            
 
-        # Compute and display stats for the second Y-axis column, if selected
-        if self.y_data_2 is not None:
+            # Compute and display stats for the second Y-axis column, if selected
+            if self.y_data_2 is not None:
 
-            stats_2 = self.compute_stats(new_data_y_2)
-            with self.zoom_stats_container:
-                ui.separator()
+                stats_2 = self.compute_stats(new_data_y_2)
+                with self.zoom_stats_container:
+                    ui.separator()
 
-                # TODO FIX LATER ADD LABELS
-                ui.label(f"Stats for {y_column_2} (Zoomed Region):").classes(
-                    "text-lg font-semibold"
-                )
-                ui.separator()
+                    # TODO FIX LATER ADD LABELS
+                    ui.label(f"Stats for {y_column_2} (Zoomed Region):").classes(
+                        "text-lg font-semibold"
+                    )
+                    ui.separator()
 
-                with ui.column().classes('w-full items-center'):
-                    with ui.row(wrap=True):
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_2['mean']:.2f}").classes("text-lg gap-0")
-                            ui.label("Mean").classes("font-semibold gap-0")
-                            ui.separator().props('vertical')
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_2['median']:.2f}").classes("text-lg gap-0")
-                            ui.label("Median").classes("font-semibold gap-0")
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_2['std']:.2f}").classes("text-lg gap-0")
-                            ui.label("Std Dev").classes("font-semibold gap-0")
-                        ui.separator()
-                    with ui.row(wrap=False, align_items='stretch').classes('items-center'):
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_2['min']:.2f}").classes("text-lg gap-0")
-                            ui.label("Min").classes("font-semibold gap-0")
-                        with ui.column().classes('items-center gap-0'):
-                            ui.label(f"{stats_2['max']:.2f}").classes("text-lg gap-0")
-                            ui.label("Max").classes("font-semibold gap-0")
-                    
-                    ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_2))
+                    with ui.column().classes('w-full items-center'):
+                        with ui.row(wrap=True):
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_2['mean']:.2f}").classes("text-lg gap-0")
+                                ui.label("Mean").classes("font-semibold gap-0")
+                                ui.separator().props('vertical')
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_2['median']:.2f}").classes("text-lg gap-0")
+                                ui.label("Median").classes("font-semibold gap-0")
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_2['std']:.2f}").classes("text-lg gap-0")
+                                ui.label("Std Dev").classes("font-semibold gap-0")
+                            ui.separator()
+                        with ui.row(wrap=False, align_items='stretch').classes('items-center'):
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_2['min']:.2f}").classes("text-lg gap-0")
+                                ui.label("Min").classes("font-semibold gap-0")
+                            with ui.column().classes('items-center gap-0'):
+                                ui.label(f"{stats_2['max']:.2f}").classes("text-lg gap-0")
+                                ui.label("Max").classes("font-semibold gap-0")
+                        
+                        ui.button("Copy Stats", on_click=lambda: self.copyStats(stats_2))
     
 
     def copyStats(self, stats):
@@ -818,7 +820,7 @@ class MainDataPage:
             yaxis=dict(range=[min(new_data_y_1), max(new_data_y_1)]))
           
         # Save the figure as a .jpg
-        fig.write_image(save_location, format="jpg")
+        fig.write_image(save_location, format=self.img_select.value)
 
         ui.notify(f"Main plot saved as {filename}", color="green")
         logger.info(f"Main plot saved as {filename}")
@@ -885,7 +887,7 @@ class MainDataPage:
             path = self.config['save plots']['path']
             save_location = Path(path) / Path(filename)
             # Save the figure as a .jpg
-            fig.write_image(save_location, format="jpg")
+            fig.write_image(save_location, format=self.img_select.value)
 
             ui.notify(f"Histogram saved as {filename}", color="green")
             logger.info(f"Histogram saved as {filename}")
@@ -937,7 +939,7 @@ def init_gui():
     favicon = str(Path(__file__).parent / "favicon.ico")
 
     # Start the NiceGUI app
-    ui.run(native=True, reload=False, title="DatPlot", favicon=favicon,window_size=(1024, 786))
+    ui.run(native=True, reload=False, title="DatPlot", favicon=favicon,window_size=(1000, 654))
 
 
 def shutdown_handler():
