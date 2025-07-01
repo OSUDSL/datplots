@@ -803,7 +803,7 @@ class MainDataPage:
         import datetime
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"main_plot_{timestamp}.jpg"
+        filename = f"main_plot_{timestamp}." + self.img_select.value
         path = self.config['save plots']['path']
         save_location = Path(path) / Path(filename)
 
@@ -820,7 +820,8 @@ class MainDataPage:
             yaxis=dict(range=[min(new_data_y_1), max(new_data_y_1)]))
           
         # Save the figure as a .jpg
-        fig.write_image(save_location, format=self.img_select.value)
+        print(self.img_select.value)
+        fig.write_image(save_location, format=self.img_select.value.lower())
 
         ui.notify(f"Main plot saved as {filename}", color="green")
         logger.info(f"Main plot saved as {filename}")
