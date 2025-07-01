@@ -182,7 +182,7 @@ class MainDataPage:
                                             ).props("color=dark")
                             
                         self.gui_components["plot_container"] = ui.element("div").style(
-                    "width: 100%; height: 100vh;")  # Full width, dynamic height
+                    "width: 100%; height: 650px;")  # Full width, dynamic height
                         
                         if(self.bindings['current file'] == "No file loaded"):
                             temp_x = [1, 2, 3, 4]
@@ -255,6 +255,7 @@ class MainDataPage:
 
             # Stats
             ui.separator().style("margin-top: 10px; margin-bottom: 10px;")
+            
             self.gui_components["summary_stats_container"] = ui.row().classes("w-full").style("display: flex; height:30%")
             with self.gui_components["summary_stats_container"]:
                 self.stats_container = ui.card().style("flex:1")
@@ -883,7 +884,7 @@ class MainDataPage:
             import datetime
 
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"histogram_{timestamp}.jpg"
+            filename = f"histogram_{timestamp}." + self.img_select.value
 
             path = self.config['save plots']['path']
             save_location = Path(path) / Path(filename)
