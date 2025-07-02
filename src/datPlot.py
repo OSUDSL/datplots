@@ -88,7 +88,7 @@ class MainDataPage:
                         self.gui_components["saved file"] =  ui.row(align_items="center")
                         with self.gui_components["saved file"]:
                             ui.menu_item(f"{self.config['save plots']['path']}").style("pointer-events: none;")
-                            with ui.button(icon='edit', on_click=self.get_save_path).style('align-self:center; text:center; font-size: 10px; width:10px;'):
+                            with ui.button(icon='edit', on_click=lambda: self.get_save_path()).style('align-self:center; text:center; font-size: 10px; width:10px;'):
                                 ui.tooltip('Change saving location')
                             ui.separator().props('vertical')
                             self.img_select = ui.select(["PNG", "JPG", "SVG"], value="PNG")
@@ -307,10 +307,12 @@ class MainDataPage:
             
                 self.gui_components["saved file"].clear()
 
-                with self.gui_components["saved file"]:
-                    ui.menu_item(f"{self.config["save plots"]["path"]}")
+                with self.gui_components["saved file"]:               
+                    ui.menu_item(f"{self.config['save plots']['path']}").style("pointer-events: none;")
+                    with ui.button(icon='edit', on_click=lambda: self.get_save_path()).style('align-self:center; text:center; font-size: 10px; width:10px;'):
+                        ui.tooltip('Change saving location')
                     ui.separator().props('vertical')
-                    ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center; text:center')
+                    self.img_select = ui.select(["PNG", "JPG", "SVG"], value="PNG")
 
            
         except Exception as ex:
