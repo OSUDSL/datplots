@@ -304,7 +304,7 @@ class MainDataPage:
             location = await app.native.main_window.create_file_dialog(allow_multiple=False, dialog_type=webview.FOLDER_DIALOG)
             if location is not None:
                 self.config['save plots']['path'] = location[0]
-            
+                self.save_config_file()
                 self.gui_components["saved file"].clear()
 
                 with self.gui_components["saved file"]:               
