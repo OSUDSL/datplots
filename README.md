@@ -7,5 +7,5 @@
     
 ## Getting an updated executable
 
-    -uv run -m PyInstaller --windowed --hidden-import numpy --collect-all nicegui src/datPlot.py
+    -uv run -m PyInstaller --windowed --icon=toy.ico --onefile --hidden-import numpy --collect-all nicegui src/datPlot.py
     
