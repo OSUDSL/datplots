@@ -79,7 +79,7 @@ class MainDataPage:
                 with ui.row(wrap=False).style('border-radius: 20px; flex:1; margin-left:0px'):
                     # Main button with tooltip
                     with ui.button(icon='save', on_click=self.save_current_tab).style('width:55%;font-size:16px;'):
-                        ui.tooltip('Save as JPEG').classes('bg-green')
+                        ui.tooltip('Save Graph').classes('bg-green')
 
                     # Dropdown arrow
                     menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
@@ -92,13 +92,11 @@ class MainDataPage:
                                 ui.tooltip('Change saving location')
                             ui.separator().props('vertical')
                             self.img_select = ui.select(["PNG", "JPG", "SVG"], value="PNG")
-
-
                 
             ui.separator().props('vertical')
             # Dropdown for x-axis selection (SimTime / DatTime)
             self.gui_components["x_axis_dropdown"] = ui.select(
-                ["SimTime", "DatTime"],
+                ["SimTime", "DatTime", "MediaTime"],
                 value="SimTime",  # Defaults to SimTime
                 label="Select X-axis",
             ).style('flex:2;')
