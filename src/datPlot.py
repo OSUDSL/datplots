@@ -28,6 +28,7 @@ class MainDataPage:
         self.plot = None
         self.range_start = None
         self.range_end = None
+        self.isZoomed = False
 
         self.config: dict = {}
         self.config_dir = Path(
@@ -264,8 +265,8 @@ class MainDataPage:
             y2_val = self.gui_components["second_graph_dropdown"].value
             self.gui_components["second_graph_dropdown"].value = self.gui_components["graph_dropdown"].value
             self.gui_components["graph_dropdown"].value = y2_val
-            self.gui_components["second_graph_dropdown"].update()
-            self.gui_components["graph_dropdown"].update()
+            # self.gui_components["second_graph_dropdown"].update()
+            # self.gui_components["graph_dropdown"].update()
 
 
 
@@ -467,6 +468,10 @@ class MainDataPage:
                 )
                 plotTitle = f"Plot of {y_column_1} and {y_column_2} vs {x_column}"
 
+            if self.isZoomed:
+                self.bindings["zoom"][0] = self.range_start
+                self.bindings["zoom"][1] = self.range_end
+
             # Update layout to add second Y-axis on the right side
             self.plot_figure.update_layout(
                 template="plotly_dark",
@@ -590,7 +595,7 @@ class MainDataPage:
             # Reset the control panel range to the original min and max
             self.bindings["zoom"][0] = self.original_min_max["min"]
             self.bindings["zoom"][1] = self.original_min_max["max"]
-
+            self.isZoomed = False
             # Re-plot the graph with the original range
             self.plot_selected_column()
 
@@ -615,7 +620,7 @@ class MainDataPage:
 
 
     def add_zoom_stats(self):
-        
+        self.isZoomed = True
         if self.range_start and self.range_end is not None:
             y_column_1 = self.gui_components["graph_dropdown"].value
             y_column_2 = self.gui_components["second_graph_dropdown"].value
