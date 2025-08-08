@@ -29,6 +29,8 @@ class MainDataPage:
         self.range_start = None
         self.range_end = None
         self.isZoomed = False
+        self.quickUpload = False
+
 
         self.config: dict = {}
         self.config_dir = Path(
@@ -64,6 +66,8 @@ class MainDataPage:
 
         # Create the main UI elements
         with ui.row(align_items="center").style("width:100%; display: flex;background-color:#1f1f1f; padding:10px;border-radius: 20px"):
+            
+            #self.upload_component.visible = False
             ui.icon("o_toys").style('font-size: 50px; flex:1;').tooltip('kachow!')
 
             with ui.row().style('gap: 1px'):
@@ -149,7 +153,10 @@ class MainDataPage:
                                     )
                                 with ui.row().style("width:100%; display:flex;"):
                                     # Horizontal layout for the remaining inputs and buttons
+                                    
+
                                     with ui.row().style("width:100%; display:flex;"):
+                                       
                                         self.gui_components["toggleButton"] = (
                                             ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box)
                                             .style("flex:1; margin-top:5px;font-size:13px")
@@ -179,6 +186,9 @@ class MainDataPage:
                                             ui.button("Reset Zoom", on_click=self.reset_graph).style(
                                                 "flex:1; text-align:center; border-radius: 10px;font-size:10px"
                                             ).props("color=dark")
+
+                                        with ui.column():
+                                            self.upload_component = ui.upload(on_upload=self.uploadNewFile, auto_upload=True, label='Drag and Drop a New Dat File', max_files=1).props("color=dark")
                             
                         self.gui_components["plot_container"] = ui.element("div").style(
                     "width: 100%; height: 650px;")  # Full width, dynamic height
@@ -268,7 +278,12 @@ class MainDataPage:
             # self.gui_components["second_graph_dropdown"].update()
             # self.gui_components["graph_dropdown"].update()
 
-
+    def uploadNewFile(self, e):
+        self.quickUpload = True
+        e.sender.reset()
+        self.bindings["current file"] = e.content
+        self.bindings["file name"] = str(e.name)
+        self.pick_dat_file()
 
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
@@ -345,11 +360,13 @@ class MainDataPage:
             )
 
     def pick_recent(self, num):
+        self.quickUpload = False
         self.bindings["current file"] = self.config["recent files"]["recents"][num]
         self.add_new_file()
         self.pick_dat_file()
 
     async def get_path(self):
+        self.quickUpload = False
         try:
             result = await app.native.main_window.create_file_dialog()
 
@@ -381,7 +398,12 @@ class MainDataPage:
             toml.dump(self.config, file)
 
     def pick_dat_file(self):
-        logger.info(f"DAT file {self.bindings["current file"]} selected")
+
+        if self.quickUpload:
+            logger.info(f"DAT file {self.bindings["file name"]} selected")
+        else:
+            logger.info(f"DAT file {self.bindings["current file"]} selected")
+
 
         # Clear previous plots and histograms
         if self.gui_components["plot_container"]:
@@ -401,13 +423,15 @@ class MainDataPage:
         self.dat_file_data = pl.read_csv(
             self.bindings["current file"], separator=" ", has_header=True
         )
-
         # Filter columns to include only ints and floats
         columns = [
             col
             for col, dtype in self.dat_file_data.schema.items()
             if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
         ]
+
+        if self.quickUpload:
+            self.bindings["current file"] = self.bindings["file name"]
 
         logger.info(f"Columns loaded: {columns}")
 
