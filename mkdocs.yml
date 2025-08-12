@@ -6,7 +6,7 @@ nav:
     - Getting Started: 'tutorial/getting_started.md'
   - Features:
     - View Recent Files: features/viewRecents.md
-    - Change Save Location: features/saveLoc.md
+    - Saving Options: features/saveLoc.md
     - Zooming: features/zoom.md
     - Changing Axes: features/axis.md
     - Drag and Drop: features/drag.md
