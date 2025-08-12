@@ -1,1 +1,27 @@
-site_name: My Docs
+site_name: Datplot
+nav:
+  - Home: index.md
+  - Tutorial: 
+    - Installation: 'tutorial/installation.md'
+    - Getting Started: 'tutorial/getting_started.md'
+  - Features:
+    - View Recent Files: features/viewRecents.md
+    - Change Save Location: features/saveLoc.md
+    - Zooming: features/zoom.md
+    - Changing Axes: features/axis.md
+    - Drag and Drop: features/drag.md
+    
+theme:
+  name: material
+  font:
+    text: BuckeyeSans
+  palette:
+    - scheme: slate
+      primary: light blue
+      accent: light blue
+
+
+  logo: toy.ico
+  icon: toy.ico
+extra_css:
+  - stylesheets/extra.css
