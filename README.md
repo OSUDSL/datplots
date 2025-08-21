@@ -1,6 +1,16 @@
-# DatPlot README
+# DatPlot Overview
 
-## Running the program
+[summary]
+
+# Documentation
+
+Full documentation can be found on [GitHub pages](https://osudsl.github.io/datplots/).
+
+# Download
+
+Datplot download can be found under [releases]()
+
+## Running the Program Locally
 
     -uv sync
     -uv run datplot
