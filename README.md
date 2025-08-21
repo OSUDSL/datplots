@@ -8,14 +8,16 @@ Full documentation can be found on [GitHub pages](https://osudsl.github.io/datpl
 
 # Download
 
-Datplot download can be found under [releases]()
+The Datplot download can be found under [releases](https://github.com/OSUDSL/datplots/releases)
 
 ## Running the Program Locally
 
-    -uv sync
-    -uv run datplot
+Clone the repository to a local device and run these commands to get datplot running locally
+
+    uv sync
+    uv run datplot
     
 ## Getting an updated executable
 
-    -uv run -m PyInstaller --windowed --icon=toy.ico --onefile --hidden-import numpy --collect-all nicegui src/datPlot.py
+    uv run -m PyInstaller --windowed --icon=toy.ico --onefile --hidden-import numpy --collect-all nicegui src/datPlot.py
     
