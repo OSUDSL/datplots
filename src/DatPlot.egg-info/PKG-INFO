@@ -1,0 +1,44 @@
+Metadata-Version: 2.4
+Name: DatPlot
+Version: 2024.0.0
+Description-Content-Type: text/markdown
+Requires-Dist: polars
+Requires-Dist: numpy
+Requires-Dist: pendulum
+Requires-Dist: loguru
+Requires-Dist: icecream
+Requires-Dist: nicegui
+Requires-Dist: pywebview
+Requires-Dist: scipy
+Requires-Dist: plotly
+Requires-Dist: pywebview
+Requires-Dist: pendulum
+Requires-Dist: kaleido==0.2.1
+Requires-Dist: appdirs
+Requires-Dist: toml
+Requires-Dist: pyinstaller
+Requires-Dist: pynput
+
+# DatPlot Overview
+
+[summary]
+
+# Documentation
+
+Full documentation can be found on [GitHub pages](https://osudsl.github.io/datplots/).
+
+# Download
+
+The Datplot download can be found under [releases](https://github.com/OSUDSL/datplots/releases)
+
+## Running the Program Locally
+
+Clone the repository to a local device and run these commands to get datplot running locally
+
+    uv sync
+    uv run datplot
+    
+## Getting an updated executable
+
+    uv run -m PyInstaller --windowed --icon=toy.ico --onefile --hidden-import numpy --collect-all nicegui src/datPlot.py
+    
