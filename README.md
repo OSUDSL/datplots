@@ -1,6 +1,6 @@
 # DatPlot Overview
 
-[summary]
+DatPlot is a program that helps users view and analyze data. By uploading your data files, you can generate interactive line graphs and histograms. The program also allows you to adjust axis points, making it easy to focus on different variables in the dataset
 
 # Documentation
 
@@ -20,4 +20,7 @@ Clone the repository to a local device and run these commands to get datplot run
 ## Getting an updated executable
 
     uv run -m PyInstaller --windowed --icon=toy.ico --onefile --hidden-import numpy --collect-all nicegui src/datPlot.py
-    
+
+# Credits
+
+Pydre was developed by The Ohio State University [Driving Simulation Lab](https://drivesim.osu.edu/).
