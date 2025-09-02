@@ -1,0 +1,16 @@
+polars
+numpy
+pendulum
+loguru
+icecream
+nicegui
+pywebview
+scipy
+plotly
+pywebview
+pendulum
+kaleido==0.2.1
+appdirs
+toml
+pyinstaller
+pynput
