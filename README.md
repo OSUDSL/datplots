@@ -23,4 +23,4 @@ Clone the repository to a local device and run these commands to get datplot run
 
 # Credits
 
-Pydre was developed by The Ohio State University [Driving Simulation Lab](https://drivesim.osu.edu/).
+DatPlot was developed by The Ohio State University [Driving Simulation Lab](https://drivesim.osu.edu/).
