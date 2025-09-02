@@ -1,9 +1,0 @@
-README.md
-pyproject.toml
-src/datPlot.py
-src/DatPlot.egg-info/PKG-INFO
-src/DatPlot.egg-info/SOURCES.txt
-src/DatPlot.egg-info/dependency_links.txt
-src/DatPlot.egg-info/entry_points.txt
-src/DatPlot.egg-info/requires.txt
-src/DatPlot.egg-info/top_level.txt
