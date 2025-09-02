@@ -28,6 +28,14 @@ datplot = "datPlot:init_gui"
 [tool.uv]
 package = true
 
+[tool.taskipy.tasks]
+exe = "del dist\\datPlot.exe && PyInstaller --windowed --icon=toy.ico --onefile --hidden-import numpy --collect-all nicegui src/datPlot.py"
+
 [tool.rye]
 managed = true
 dev-dependencies = ["ptpython"]
+
+[dependency-groups]
+dev = [
+    "taskipy>=1.14.1",
+]

@@ -28,6 +28,9 @@ class MainDataPage:
         self.plot = None
         self.range_start = None
         self.range_end = None
+        self.isZoomed = False
+        self.quickUpload = False
+
 
         self.config: dict = {}
         self.config_dir = Path(
@@ -63,6 +66,8 @@ class MainDataPage:
 
         # Create the main UI elements
         with ui.row(align_items="center").style("width:100%; display: flex;background-color:#1f1f1f; padding:10px;border-radius: 20px"):
+            
+            #self.upload_component.visible = False
             ui.icon("o_toys").style('font-size: 50px; flex:1;').tooltip('kachow!')
 
             with ui.row().style('gap: 1px'):
@@ -79,7 +84,7 @@ class MainDataPage:
                 with ui.row(wrap=False).style('border-radius: 20px; flex:1; margin-left:0px'):
                     # Main button with tooltip
                     with ui.button(icon='save', on_click=self.save_current_tab).style('width:55%;font-size:16px;'):
-                        ui.tooltip('Save as JPEG').classes('bg-green')
+                        ui.tooltip('Save Graph').classes('bg-green')
 
                     # Dropdown arrow
                     menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
@@ -88,17 +93,15 @@ class MainDataPage:
                         self.gui_components["saved file"] =  ui.row(align_items="center")
                         with self.gui_components["saved file"]:
                             ui.menu_item(f"{self.config['save plots']['path']}").style("pointer-events: none;")
-                            with ui.button(icon='edit', on_click=self.get_save_path).style('align-self:center; text:center; font-size: 10px; width:10px;'):
+                            with ui.button(icon='edit', on_click=lambda: self.get_save_path()).style('align-self:center; text:center; font-size: 10px; width:10px;'):
                                 ui.tooltip('Change saving location')
                             ui.separator().props('vertical')
                             self.img_select = ui.select(["PNG", "JPG", "SVG"], value="PNG")
-
-
                 
             ui.separator().props('vertical')
             # Dropdown for x-axis selection (SimTime / DatTime)
             self.gui_components["x_axis_dropdown"] = ui.select(
-                ["SimTime", "DatTime"],
+                ["SimTime", "DatTime", "MediaTime"],
                 value="SimTime",  # Defaults to SimTime
                 label="Select X-axis",
             ).style('flex:2;')
@@ -150,7 +153,10 @@ class MainDataPage:
                                     )
                                 with ui.row().style("width:100%; display:flex;"):
                                     # Horizontal layout for the remaining inputs and buttons
+                                    
+
                                     with ui.row().style("width:100%; display:flex;"):
+                                       
                                         self.gui_components["toggleButton"] = (
                                             ui.button("Box Zoom \n Toggle", on_click=self.update_toggle_box)
                                             .style("flex:1; margin-top:5px;font-size:13px")
@@ -180,6 +186,9 @@ class MainDataPage:
                                             ui.button("Reset Zoom", on_click=self.reset_graph).style(
                                                 "flex:1; text-align:center; border-radius: 10px;font-size:10px"
                                             ).props("color=dark")
+
+                                        with ui.column():
+                                            self.upload_component = ui.upload(on_upload=self.uploadNewFile, auto_upload=True, label='Drag and Drop a New Dat File', max_files=1).props("color=dark")
                             
                         self.gui_components["plot_container"] = ui.element("div").style(
                     "width: 100%; height: 650px;")  # Full width, dynamic height
@@ -266,10 +275,15 @@ class MainDataPage:
             y2_val = self.gui_components["second_graph_dropdown"].value
             self.gui_components["second_graph_dropdown"].value = self.gui_components["graph_dropdown"].value
             self.gui_components["graph_dropdown"].value = y2_val
-            self.gui_components["second_graph_dropdown"].update()
-            self.gui_components["graph_dropdown"].update()
+            # self.gui_components["second_graph_dropdown"].update()
+            # self.gui_components["graph_dropdown"].update()
 
-
+    def uploadNewFile(self, e):
+        self.quickUpload = True
+        e.sender.reset()
+        self.bindings["current file"] = e.content
+        self.bindings["file name"] = str(e.name)
+        self.pick_dat_file()
 
     def reset_lines(self):
         """Reset the vertical and horizontal lines by clearing the input fields."""
@@ -304,13 +318,15 @@ class MainDataPage:
             location = await app.native.main_window.create_file_dialog(allow_multiple=False, dialog_type=webview.FOLDER_DIALOG)
             if location is not None:
                 self.config['save plots']['path'] = location[0]
-            
+                self.save_config_file()
                 self.gui_components["saved file"].clear()
 
-                with self.gui_components["saved file"]:
-                    ui.menu_item(f"{self.config["save plots"]["path"]}")
+                with self.gui_components["saved file"]:               
+                    ui.menu_item(f"{self.config['save plots']['path']}").style("pointer-events: none;")
+                    with ui.button(icon='edit', on_click=lambda: self.get_save_path()).style('align-self:center; text:center; font-size: 10px; width:10px;'):
+                        ui.tooltip('Change saving location')
                     ui.separator().props('vertical')
-                    ui.button(icon='edit', on_click=self.get_save_path).style('align-items:center; text:center')
+                    self.img_select = ui.select(["PNG", "JPG", "SVG"], value="PNG")
 
            
         except Exception as ex:
@@ -344,11 +360,13 @@ class MainDataPage:
             )
 
     def pick_recent(self, num):
+        self.quickUpload = False
         self.bindings["current file"] = self.config["recent files"]["recents"][num]
         self.add_new_file()
         self.pick_dat_file()
 
     async def get_path(self):
+        self.quickUpload = False
         try:
             result = await app.native.main_window.create_file_dialog()
 
@@ -380,7 +398,12 @@ class MainDataPage:
             toml.dump(self.config, file)
 
     def pick_dat_file(self):
-        logger.info(f"DAT file {self.bindings["current file"]} selected")
+
+        if self.quickUpload:
+            logger.info(f"DAT file {self.bindings["file name"]} selected")
+        else:
+            logger.info(f"DAT file {self.bindings["current file"]} selected")
+
 
         # Clear previous plots and histograms
         if self.gui_components["plot_container"]:
@@ -400,13 +423,15 @@ class MainDataPage:
         self.dat_file_data = pl.read_csv(
             self.bindings["current file"], separator=" ", has_header=True
         )
-
         # Filter columns to include only ints and floats
         columns = [
             col
             for col, dtype in self.dat_file_data.schema.items()
             if dtype in [pl.Float64, pl.Int64, pl.Float32, pl.Int32]
         ]
+
+        if self.quickUpload:
+            self.bindings["current file"] = self.bindings["file name"]
 
         logger.info(f"Columns loaded: {columns}")
 
@@ -466,6 +491,10 @@ class MainDataPage:
                     go.Scatter(x=self.x_data, y=self.y_data_2, name=y_column_2, yaxis="y2")
                 )
                 plotTitle = f"Plot of {y_column_1} and {y_column_2} vs {x_column}"
+
+            if self.isZoomed:
+                self.bindings["zoom"][0] = self.range_start
+                self.bindings["zoom"][1] = self.range_end
 
             # Update layout to add second Y-axis on the right side
             self.plot_figure.update_layout(
@@ -590,7 +619,7 @@ class MainDataPage:
             # Reset the control panel range to the original min and max
             self.bindings["zoom"][0] = self.original_min_max["min"]
             self.bindings["zoom"][1] = self.original_min_max["max"]
-
+            self.isZoomed = False
             # Re-plot the graph with the original range
             self.plot_selected_column()
 
@@ -615,7 +644,7 @@ class MainDataPage:
 
 
     def add_zoom_stats(self):
-        
+        self.isZoomed = True
         if self.range_start and self.range_end is not None:
             y_column_1 = self.gui_components["graph_dropdown"].value
             y_column_2 = self.gui_components["second_graph_dropdown"].value
