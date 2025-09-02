@@ -22,7 +22,7 @@ Once a dat file is opened there are two ways to view the data, a line graph and 
 
 ![Select plot tab](../img/selectplot.JPG)
 
-The line chart will be selected first *change wording*
+The line chart tab will already be selected
 
 ![Selected plot](../img/whole plot.JPG)
 
@@ -31,28 +31,6 @@ The line chart will be selected first *change wording*
 To view the data as histogram, select the histogram tab
 
 ![Select histogram](../img/histogram_datplot.JPG)
-
-## Saving a Graph
-
-The dat file graph are able to be saved as images, for more details on changing the save file type and changing the saved file location, see [Saving Options](../features/saveLoc.md)
-
-### Saving the Line Graph
-
-To save the line graph make sure the chart tab is selected and select the save icon
-
-![Save line graph](../img/saveplot.JPG)
-
-### Saving the Histogram
-
-To save the histogram graph make sure the histogram tab is selected and select the save icon
-
-![Save histogram](../img/savehisto.JPG)
-
-## Viewing Summary Stats
-
-To see the summary statictics of the data, scroll under the graph to view
-
-![See summary stats](../img/summarystats.JPG)
 
 ## Analyzing Data
 
@@ -84,6 +62,28 @@ An option to add a second dataset along the Y axis is available. To add another 
 
 ![Pick Y 2 Axis](../img/y2axis.JPG)
 
-Once the data set is chosen a second line a different color will be displayed. The new y Axis can be seen on the right of the graph.
+Once the data set is chosen a second line a different color will be displayed. The new Y Axis can be seen on the right of the graph.
 
 ![Full plot with Y 2](../img/fully2plot.JPG)
+
+## Viewing Summary Stats
+
+To see the summary statictics of the data, scroll under the graph to view
+
+![See summary stats](../img/summarystats.JPG)
+
+## Saving a Graph
+
+The dat file graphs are able to be saved as images, for more details on changing the save file type and changing the saved file location, see [Saving Options](../features/saveLoc.md)
+
+### Saving the Line Graph
+
+To save the line graph make sure the chart tab is selected and select the save icon
+
+![Save line graph](../img/saveplot.JPG)
+
+### Saving the Histogram
+
+To save the histogram graph make sure the histogram tab is selected and select the save icon
+
+![Save histogram](../img/savehisto.JPG)

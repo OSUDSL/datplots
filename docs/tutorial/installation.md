@@ -2,7 +2,7 @@
 
 ## Downloading the Program
 
-To get the program installed on a computer, download the datplot executable
+To get the program installed on a computer, download the [datplot executable](https://github.com/OSUDSL/datplots/releases/tag/Latest)
 
 ## Starting up the Program
 
