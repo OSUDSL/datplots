@@ -3,6 +3,8 @@
 
 src/DatPlot.egg-info/
 
+site/
+
 __pycache__/
 *.py[cod]
 *$py.class
