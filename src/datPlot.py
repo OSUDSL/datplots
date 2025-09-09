@@ -31,6 +31,9 @@ class MainDataPage:
         self.isZoomed = False
         self.quickUpload = False
 
+        self.x_list = ["SimTime", "DatTime", "MediaTime"]
+        self.largeList = ["SimTime", "DatTime", "MediaTime", "XPos", "Velocity"]
+
 
         self.config: dict = {}
         self.config_dir = Path(
@@ -99,12 +102,19 @@ class MainDataPage:
                             self.img_select = ui.select(["PNG", "JPG", "SVG"], value="PNG")
                 
             ui.separator().props('vertical')
-            # Dropdown for x-axis selection (SimTime / DatTime)
-            self.gui_components["x_axis_dropdown"] = ui.select(
-                ["SimTime", "DatTime", "MediaTime"],
-                value="SimTime",  # Defaults to SimTime
-                label="Select X-axis",
-            ).style('flex:2;')
+            
+            with ui.row().style('align-items:center; gap:1rem;flex:3;width: 100%'):  # row keeps them side by side
+
+                with ui.checkbox(on_change=self.add_x_handler).style('width:20%'):
+                    ui.tooltip('More X Axis Options').classes('bg-blue')
+
+                # Dropdown for x-axis selection (SimTime / DatTime)
+                self.gui_components["x_axis_dropdown"] = ui.select(
+                    self.x_list,
+                    value=self.x_list[0],  # Defaults to SimTime
+                    label="Select X-axis",
+                ).style("width:70%")
+
 
             # Dropdown for y-axis (column) selection
             self.gui_components["graph_dropdown"] = ui.select(
@@ -269,6 +279,15 @@ class MainDataPage:
             with self.gui_components["summary_stats_container"]:
                 self.stats_container = ui.card().style("flex:1")
                 self.zoom_stats_container = ui.card().style("flex:1")
+
+
+    def add_x_handler(self, event):
+        if event.value:  # checkbox checked
+            self.gui_components["x_axis_dropdown"].set_options(self.largeList)
+        else:            # checkbox unchecked
+            self.gui_components["x_axis_dropdown"].set_options(self.x_list)
+
+
 
     def swap_y(self):
         if self.gui_components["second_graph_dropdown"].value != "None":
@@ -437,6 +456,7 @@ class MainDataPage:
 
         # Update dropdown options
         self.gui_components["graph_dropdown"].options = columns
+        self.largeList = columns
         self.gui_components["second_graph_dropdown"].options = ["None"] + columns
         self.gui_components["graph_dropdown"].update()
         self.gui_components["second_graph_dropdown"].update()
