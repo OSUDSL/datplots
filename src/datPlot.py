@@ -113,6 +113,7 @@ class MainDataPage:
                     self.x_list,
                     value=self.x_list[0],  # Defaults to SimTime
                     label="Select X-axis",
+                    on_change=self.plot_selected_column,
                 ).style("width:70%")
 
 
