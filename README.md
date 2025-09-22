@@ -19,7 +19,9 @@ Clone the repository to a local device and run these commands to get datplot run
     
 ## Getting an updated executable
 
-    uv run -m PyInstaller --windowed --icon=toy.ico --onefile --hidden-import numpy --collect-all nicegui src/datPlot.py
+    uv run -m PyInstaller --windowed --icon=toy.ico --onefile --hidden-import numpy plotly.validators --collect-all nicegui src/datPlot.py
+
+    uv run -m PyInstaller datPlot.spec
 
 # Credits
 

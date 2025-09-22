@@ -1,12 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, collect_data_files
 
 datas = []
 binaries = []
-hiddenimports = ['numpy']
+hiddenimports = ['plotly.validators']
 tmp_ret = collect_all('nicegui')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
+datas += collect_data_files('plotly')  
 
 a = Analysis(
     ['src\\datPlot.py'],
