@@ -33,3 +33,17 @@ To use the box zoom, highlight the area of the map that you want to zoom in on a
 ![box zoom example view](../img/boxtogglezoomed.JPG)
 
 To stop using the box toggle go to settings and click the box zoom button so it turns gray.
+
+## Resetting Zoom
+
+To reset the plot to its original zoom settings.
+
+### 1. Select the settings button
+
+![Settings view](../img/settingsbutton.JPG)
+
+### 2. Select the reset zoom button
+
+![Settings view](../img/resetzoom.png)
+
+Once selected the zoom will reset.
