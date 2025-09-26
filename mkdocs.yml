@@ -10,6 +10,7 @@ nav:
     - Zooming: features/zoom.md
     - Changing Axes: features/axis.md
     - Drag and Drop: features/drag.md
+    - Reference Lines: features/referenceLines.md
     
 theme:
   name: material
