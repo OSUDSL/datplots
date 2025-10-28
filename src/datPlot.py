@@ -82,7 +82,8 @@ class MainDataPage:
                     # Dropdown arrow
                     menu_dropdown = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
 
-                    self.gui_components["load_file_button"] = ui.menu().bind_value(menu_dropdown).props('auto-close')
+                    #self.gui_components["load_file_button"] = ui.menu().bind_value(menu_dropdown).props('auto-close')
+                    self.gui_components["load_file_button"] = ui.menu().props('auto-close')
 
                 with ui.row(wrap=False).style('border-radius: 20px; flex:1; margin-left:0px'):
                     # Main button with tooltip
@@ -92,7 +93,7 @@ class MainDataPage:
                     # Dropdown arrow
                     menu_button = ui.button(icon='arrow_drop_down').style('font-color: white; margin-left:-20px; width:2%;font-size:16px;')
                     
-                    with ui.menu().props().bind_value(menu_button):
+                    with ui.menu().props():
                         self.gui_components["saved file"] =  ui.row(align_items="center")
                         with self.gui_components["saved file"]:
                             ui.menu_item(f"{self.config['save plots']['path']}").style("pointer-events: none;")
