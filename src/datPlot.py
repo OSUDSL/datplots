@@ -111,7 +111,7 @@ class MainDataPage:
                     connection.close()
                     
                 # Create a dropdown to select a .dat file from DuckLake and once a .dat file is selected, call the load_file_from_ducklake method.
-                self.gui_components["load_file_from_ducklake"] = ui.select(files, label="Select DAT File From DuckLake", on_change=self.load_file_from_ducklake).style("width:55%")
+                self.gui_components["load_file_from_ducklake"] = ui.select(files, label="Select DAT File From DuckLake", on_change=self.load_file_from_ducklake, with_input=True).style("width:55%")
 
                 with ui.row(wrap=False).style('border-radius: 20px;flex:1'):
                     # Main button with tooltip
