@@ -12,6 +12,8 @@ from pathlib import Path
 
 import webview
 
+from ducklake_connector import _connect_to_ducklake, DuckLakeConfig, env_file_path
+
 
 # Make summary look better
 # Make executable? - most modern solution
@@ -30,6 +32,7 @@ class MainDataPage:
         self.range_end = None
         self.isZoomed = False
         self.quickUpload = False
+        self.data_already_loaded = False
 
         self.x_list = ["SimTime", "DatTime", "MediaTime"]
         self.largeList = ["SimTime", "DatTime", "MediaTime", "XPos", "Velocity"]
@@ -50,6 +53,7 @@ class MainDataPage:
             "histogram_container": None,
             "toggleButton": None,
             "load_file_button": None,
+            "load_file_from_ducklake": None,
             "saved file": "",
             "current tab": "",
             "zero button": "",
@@ -65,6 +69,27 @@ class MainDataPage:
             'plot range': []
         }
 
+    def connect_to_ducklake(self, config: DuckLakeConfig):
+        """Connect to DuckLake using the provided configuration."""
+        try:
+            connection = _connect_to_ducklake(config)
+            logger.info("Successfully connected to DuckLake.")
+            return connection
+        except Exception as exc:
+            logger.opt(exception=True).error("Failed to connect to DuckLake.")
+            raise exc
+        
+    def list_of_dat_files_in_ducklake(self, connection) -> list[str]:
+        """List .dat files available in DuckLake."""
+        try:
+            result = connection.execute("SELECT DISTINCT filename FROM datafiles").fetchall()
+            dat_files = [element[0] for element in result]
+            return dat_files
+        except Exception as exc:
+            logger.opt(exception=True).error("Failed to list .dat files in DuckLake.")
+            raise exc
+
+
     def page_creation(self):
 
         # Create the main UI elements
@@ -72,8 +97,22 @@ class MainDataPage:
             
             #self.upload_component.visible = False
             ui.icon("o_toys").style('font-size: 50px; flex:1;').tooltip('kachow!')
-
+            
             with ui.row().style('gap: 1px'):
+
+                # Create a DuckLakeConfig object by loading the configuration from the .env file
+                config = DuckLakeConfig.from_env_file(env_file_path())
+                 # Create a connection to DuckLake
+                connection = self.connect_to_ducklake(config)
+                try:
+                    # Get the list of .dat files available in DuckLake
+                    files = self.list_of_dat_files_in_ducklake(connection)
+                finally:
+                    connection.close()
+                    
+                # Create a dropdown to select a .dat file from DuckLake and once a .dat file is selected, call the load_file_from_ducklake method.
+                self.gui_components["load_file_from_ducklake"] = ui.select(files, label="Select DAT File From DuckLake", on_change=self.load_file_from_ducklake).style("width:55%")
+
                 with ui.row(wrap=False).style('border-radius: 20px;flex:1'):
                     # Main button with tooltip
                     with ui.button(icon='folder', on_click=self.get_path).style('width:55%;font-size:16px;'):
@@ -282,7 +321,7 @@ class MainDataPage:
                 self.stats_container = ui.card().style("flex:1")
                 self.zoom_stats_container = ui.card().style("flex:1")
 
-
+   
     def add_x_handler(self, event):
         if event.value:  # checkbox checked
             self.gui_components["x_axis_dropdown"].set_options(self.largeList)
@@ -418,6 +457,18 @@ class MainDataPage:
         with open(self.config_filepath, "w") as file:
             toml.dump(self.config, file)
 
+    def load_file_from_ducklake(self,connection):
+        self.quickUpload = False
+        self.bindings["current file"] = self.gui_components["load_file_from_ducklake"].value
+        self.add_new_file()
+
+        result = connection.execute("SELECT project FROM datafiles WHERE filename = ?", (self.bindings["current file"])).fetchone()
+        project_name = result[0]
+        table_name = f"{project_name}/{self.bindings['current file'].stem}"
+        qualified_table_name = f'drivedata."{table_name.replace("\"", "\"\"")}"'
+        self.dat_file_data = pl.read_database(f"SELECT * FROM {qualified_table_name}", connection)
+        self.data_already_loaded = True
+
     def pick_dat_file(self):
 
         if self.quickUpload:
@@ -440,10 +491,13 @@ class MainDataPage:
         self.gui_components["graph_dropdown"].update()
         self.gui_components["second_graph_dropdown"].update()
 
-        # Load the dat file using polars
-        self.dat_file_data = pl.read_csv(
-            self.bindings["current file"], separator=" ", has_header=True
-        )
+        # Load the dat file using polars if not already loaded
+        if not self.data_already_loaded:
+            # Load the dat file using polars
+            self.dat_file_data = pl.read_csv(
+                self.bindings["current file"], separator=" ", has_header=True
+            )
+
         # Filter columns to include only ints and floats
         columns = [
             col
