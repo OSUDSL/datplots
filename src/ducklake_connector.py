@@ -115,7 +115,8 @@ def _ducklake_setup_sql(
         ),
         (
             "ATTACH 'ducklake:my_ducklake' AS data ("
-            f"DATA_PATH '{_sql_literal(config.data_path)}'"
+            f"DATA_PATH '{_sql_literal(config.data_path)}',"
+            "OVERRIDE_DATA_PATH true"
             ");"
         ),
         "USE data;",

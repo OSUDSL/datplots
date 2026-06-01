@@ -9,7 +9,7 @@ from datetime import datetime
 from appdirs import AppDirs
 import toml
 from pathlib import Path
-
+from ducklake_polars import read_ducklake
 import webview
 
 from ducklake_connector import _connect_to_ducklake, DuckLakeConfig, env_file_path
@@ -33,6 +33,7 @@ class MainDataPage:
         self.isZoomed = False
         self.quickUpload = False
         self.data_already_loaded = False
+        self.connection = None
 
         self.x_list = ["SimTime", "DatTime", "MediaTime"]
         self.largeList = ["SimTime", "DatTime", "MediaTime", "XPos", "Velocity"]
@@ -103,15 +104,12 @@ class MainDataPage:
                 # Create a DuckLakeConfig object by loading the configuration from the .env file
                 config = DuckLakeConfig.from_env_file(env_file_path())
                  # Create a connection to DuckLake
-                connection = self.connect_to_ducklake(config)
-                try:
-                    # Get the list of .dat files available in DuckLake
-                    files = self.list_of_dat_files_in_ducklake(connection)
-                finally:
-                    connection.close()
-                    
+                self.connection = self.connect_to_ducklake(config)
+                # Get the list of .dat files available in DuckLake
+                files = self.list_of_dat_files_in_ducklake(self.connection)
+               
                 # Create a dropdown to select a .dat file from DuckLake and once a .dat file is selected, call the load_file_from_ducklake method.
-                self.gui_components["load_file_from_ducklake"] = ui.select(files, label="Select DAT File From DuckLake", on_change=self.load_file_from_ducklake, with_input=True).style("width:55%")
+                self.gui_components["load_file_from_ducklake"] = ui.select(files, label="Select DAT File From DuckLake", on_change=self.load_file_from_ducklake, with_input=True).style("width:55`%")
 
                 with ui.row(wrap=False).style('border-radius: 20px;flex:1'):
                     # Main button with tooltip
@@ -457,17 +455,20 @@ class MainDataPage:
         with open(self.config_filepath, "w") as file:
             toml.dump(self.config, file)
 
-    def load_file_from_ducklake(self,connection):
+    def load_file_from_ducklake(self):
         self.quickUpload = False
         self.bindings["current file"] = self.gui_components["load_file_from_ducklake"].value
         self.add_new_file()
 
-        result = connection.execute("SELECT project FROM datafiles WHERE filename = ?", (self.bindings["current file"])).fetchone()
+        result = self.connection.execute("SELECT project FROM datafiles WHERE filename = ?", [(self.bindings["current file"])]).fetchone()
         project_name = result[0]
-        table_name = f"{project_name}/{self.bindings['current file'].stem}"
+
+        table_name = f"{project_name}/{Path(self.bindings['current file']).stem}"
         qualified_table_name = f'drivedata."{table_name.replace("\"", "\"\"")}"'
-        self.dat_file_data = pl.read_database(f"SELECT * FROM {qualified_table_name}", connection)
+
+        self.dat_file_data =  self.connection.execute(f"SELECT * FROM {qualified_table_name}").pl()
         self.data_already_loaded = True
+        self.pick_dat_file()
 
     def pick_dat_file(self):
 
