@@ -20,6 +20,10 @@ dependencies = [
     "toml",
     "pyinstaller",
     "pynput",
+    "ducklake-polars>=0.1.1",
+    "duckdb>=1.5.4",
+    "typer>=0.26.8",
+    "pyarrow>=25.0.0",
 ]
 
 [project.scripts]
