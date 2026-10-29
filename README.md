@@ -15,7 +15,7 @@ The Datplot download can be found under [releases](https://github.com/OSUDSL/dat
 Clone the repository to a local device and run these commands to get datplot running locally
 
     uv sync
-    uv run datplot
+    uv run src/datPlot.py
     
 ## Getting an updated executable
 
