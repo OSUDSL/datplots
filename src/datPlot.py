@@ -80,14 +80,37 @@ class MainDataPage:
             logger.opt(exception=True).error("Failed to connect to DuckLake.")
             raise exc
         
-    def list_of_dat_files_in_ducklake(self, connection) -> list[str]:
-        """List .dat files available in DuckLake."""
+    
+    # def list_of_dat_files_in_ducklake(self, connection) -> list[str]:
+    #     """List .dat files available in DuckLake."""
+    #     try:
+    #         result = connection.execute("SELECT DISTINCT filename FROM datafiles").fetchall()
+    #         dat_files = [element[0] for element in result]
+    #         return dat_files
+    #     except Exception as exc:
+    #         logger.opt(exception=True).error("Failed to list .dat files in DuckLake.")
+    #         raise exc
+    
+
+    def list_projects(self) -> list[str]:
+        """Distinct project names in DuckLake, sorted."""
         try:
-            result = connection.execute("SELECT DISTINCT filename FROM datafiles").fetchall()
-            dat_files = [element[0] for element in result]
-            return dat_files
+            rows = self.connection.execute("SELECT DISTINCT project FROM datafiles WHERE project IS NOT NULL").fetchall()
+            return sorted([row[0] for row in rows])
         except Exception as exc:
-            logger.opt(exception=True).error("Failed to list .dat files in DuckLake.")
+            logger.opt(exception=True).error("Failed to list projects in DuckLake.")
+            raise exc
+    
+
+    def list_files_for_project(self, project_name: str) -> list[str]:
+        """List .dat files for a specific project in DuckLake."""
+        try:
+            rows = self.connection.execute(
+                "SELECT filename FROM datafiles WHERE project = ?", [(project_name)]
+            ).fetchall()
+            return sorted([row[0] for row in rows])
+        except Exception as exc:
+            logger.opt(exception=True).error("Failed to list files for project in DuckLake.")
             raise exc
 
 
@@ -101,16 +124,37 @@ class MainDataPage:
             
             with ui.row().style('gap: 1px'):
 
-                # Create a DuckLakeConfig object by loading the configuration from the .env file
-                config = DuckLakeConfig.from_env_file(env_file_path())
-                 # Create a connection to DuckLake
-                self.connection = self.connect_to_ducklake(config)
-                # Get the list of .dat files available in DuckLake
-                files = self.list_of_dat_files_in_ducklake(self.connection)
-               
-                # Create a dropdown to select a .dat file from DuckLake and once a .dat file is selected, call the load_file_from_ducklake method.
-                self.gui_components["load_file_from_ducklake"] = ui.select(files, label="Select DAT File From DuckLake", on_change=self.load_file_from_ducklake, with_input=True).style("width:55`%")
+                try:
+                    # Create a DuckLakeConfig object by loading the configuration from the .env file
+                    config = DuckLakeConfig.from_env_file(env_file_path())
+                    # Create a connection to DuckLake
+                    self.connection = self.connect_to_ducklake(config)
+                    projects = self.list_projects()
+                except Exception:
+                    self.connection = None
+                    projects = []
+                    ui.notify("DuckLake connection failed. Please check your .env file.", color="red")
 
+                # Get the list of .dat files available in DuckLake
+                self.gui_components["project_select"] = ui.select(
+                    projects,
+                    label="Project",
+                    with_input=True,                     # type to filter, like your QCompleter
+                    on_change=self.on_project_change,
+                ).style("width: 200px")
+                if self.connection is None:
+                    self.gui_components["project_select"].disable()
+                    ui.notify("DuckLake connection failed. Please check your .env file.", color="red")
+
+                # picking a dat file from that project
+                self.gui_components["file_select"] = ui.select(
+                    [],
+                    label="DAT File",
+                    with_input=True,
+                    on_change=self.load_file_from_ducklake,
+                ).style("width: 280px")
+                self.gui_components["file_select"].disable()   # enabled once a project is picked
+               
                 with ui.row(wrap=False).style('border-radius: 20px;flex:1'):
                     # Main button with tooltip
                     with ui.button(icon='folder', on_click=self.get_path).style('width:55%;font-size:16px;'):
@@ -455,18 +499,38 @@ class MainDataPage:
         with open(self.config_filepath, "w") as file:
             toml.dump(self.config, file)
 
-    def load_file_from_ducklake(self):
+    def on_project_change(self, e):
+        """Refill the DAT file dropdown with the files from the selected project."""
+        file_selected = self.gui_components["file_select"]
+        if not e.value:
+            file_selected.set_options([], value=None)  # Clear options if no project is selected
+            file_selected.disable()  # Disable the file select dropdown
+            return
+
+        files = self.list_files_for_project(e.value)
+        file_selected.set_options(files, value=None)  # clear the previous selection and set new options
+        file_selected.enable()  # Enable the file select dropdown
+        logger.info(f"Project selected: {e.value}. Available files: {files}")
+    
+    def load_file_from_ducklake(self, e):
+        filename = e.value
+        project = self.gui_components["project_select"].value
+        # set_options(value=None) fires on_change with None, so ignore that
+        if not filename or not project:
+            return
+
         self.quickUpload = False
-        self.bindings["current file"] = self.gui_components["load_file_from_ducklake"].value
-        self.add_new_file()
+        self.bindings["current file"] = filename
 
-        result = self.connection.execute("SELECT project FROM datafiles WHERE filename = ?", [(self.bindings["current file"])]).fetchone()
-        project_name = result[0]
+        table_name = f"{project}/{Path(filename).stem}"
+        qualified = 'drivedata."' + table_name.replace('"', '""') + '"'
+        try:
+            self.dat_file_data = self.connection.sql(f"SELECT * FROM {qualified}").pl()
+        except Exception:
+            logger.opt(exception=True).error(f"Failed to load {table_name} from DuckLake")
+            ui.notify(f"Couldn't load {filename}", color="red")
+            return
 
-        table_name = f"{project_name}/{Path(self.bindings['current file']).stem}"
-        qualified_table_name = f'drivedata."{table_name.replace("\"", "\"\"")}"'
-
-        self.dat_file_data =  self.connection.execute(f"SELECT * FROM {qualified_table_name}").pl()
         self.data_already_loaded = True
         self.pick_dat_file()
 
@@ -498,6 +562,7 @@ class MainDataPage:
             self.dat_file_data = pl.read_csv(
                 self.bindings["current file"], separator=" ", has_header=True
             )
+        self.data_already_loaded = False  # Reset for next time
 
         # Filter columns to include only ints and floats
         columns = [
